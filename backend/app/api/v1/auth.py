@@ -10,7 +10,7 @@
 # firma.py -> /firma/listele, /firma/ekle
 # Boylece main.py temiz kalir!
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import JWTError
@@ -19,7 +19,8 @@ from app.core.database import get_master_db
 from app.core.security import token_coz
 from app.schemas.auth import LoginRequest, TokenResponse, KullaniciBilgi
 from app.services.auth_service import kullanici_giris
-from app.models.master import Kullanici, Tenant
+from app.services.log_service import islem_logla
+from app.models.master import Kullanici, Tenant, IslemLogEnum
 
 # ---- ROUTER OLUSTUR ----
 router = APIRouter(
@@ -40,29 +41,33 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 # =============================================
 @router.post("/login", response_model=TokenResponse)
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_master_db),
 ):
-    """
-    📚 DERS: Login endpoint'i.
-
-    OAuth2PasswordRequestForm kullaniyoruz cunku:
-    1. Swagger UI'da (localhost:8000/docs) "Authorize" butonu calissin
-    2. Standart OAuth2 protokolune uygun olsun
-
-    form_data.username = Email (OAuth2 standardi "username" diyor)
-    form_data.password = Sifre
-
-    Depends(get_master_db):
-    - FastAPI otomatik olarak DB oturumu olusturur
-    - Endpoint bitince oturumu kapatir
-    - Buna "Dependency Injection" denir
-    """
-    return kullanici_giris(
-        email=form_data.username,   # OAuth2'de email yerine username kullanilir
-        sifre=form_data.password,
-        db=db,
-    )
+    """Login endpoint'i (Swagger icin form-data)"""
+    try:
+        sonuc = kullanici_giris(
+            email=form_data.username,
+            sifre=form_data.password,
+            db=db,
+        )
+        # Basarili giris logu
+        kullanici = db.query(Kullanici).filter(Kullanici.email == form_data.username).first()
+        islem_logla(
+            db=db, islem_turu=IslemLogEnum.GIRIS, modul="auth",
+            aciklama=f"Basarili giris: {form_data.username}",
+            kullanici=kullanici, request=request,
+        )
+        return sonuc
+    except HTTPException as e:
+        # Basarisiz giris logu
+        islem_logla(
+            db=db, islem_turu=IslemLogEnum.GIRIS_BASARISIZ, modul="auth",
+            aciklama=f"Basarisiz giris denemesi: {form_data.username}",
+            request=request, basarili=False, hata_mesaji=e.detail,
+        )
+        raise
 
 
 # =============================================
@@ -71,27 +76,31 @@ def login(
 # =============================================
 @router.post("/login/json", response_model=TokenResponse)
 def login_json(
+    request: Request,
     login_data: LoginRequest,
     db: Session = Depends(get_master_db),
 ):
-    """
-    📚 DERS: JSON login endpoint'i.
-
-    Flutter uygulamasi JSON gonderir:
-    {
-        "email": "admin@osgbyazilim.com",
-        "sifre": "admin123"
-    }
-
-    Bu endpoint o JSON'u alir ve giris yapar.
-    Ayri bir endpoint cunku OAuth2 form-data kullanir,
-    Flutter ise JSON gonderir.
-    """
-    return kullanici_giris(
-        email=login_data.email,
-        sifre=login_data.sifre,
-        db=db,
-    )
+    """JSON login endpoint'i (Flutter icin)"""
+    try:
+        sonuc = kullanici_giris(
+            email=login_data.email,
+            sifre=login_data.sifre,
+            db=db,
+        )
+        kullanici = db.query(Kullanici).filter(Kullanici.email == login_data.email).first()
+        islem_logla(
+            db=db, islem_turu=IslemLogEnum.GIRIS, modul="auth",
+            aciklama=f"Basarili giris: {login_data.email}",
+            kullanici=kullanici, request=request,
+        )
+        return sonuc
+    except HTTPException as e:
+        islem_logla(
+            db=db, islem_turu=IslemLogEnum.GIRIS_BASARISIZ, modul="auth",
+            aciklama=f"Basarisiz giris denemesi: {login_data.email}",
+            request=request, basarili=False, hata_mesaji=e.detail,
+        )
+        raise
 
 
 # =============================================

@@ -139,155 +139,183 @@ class _FirmaFormScreenState extends State<FirmaFormScreen> {
         foregroundColor: Colors.white,
       ),
 
+      // 📚 DERS: Center + ConstrainedBox ile formun max genisligini sinirla
+      // Genis ekranlarda form 700px'den fazla yayilmaz
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ---- TEMEL BILGILER ----
-              _bolumBaslik('Temel Bilgiler'),
-              const SizedBox(height: 12),
-
-              // Firma adi (zorunlu)
-              _textAlani(
-                controller: _adController,
-                label: 'Firma Adi *',
-                hint: 'Ornek: ABC Insaat Ltd. Sti.',
-                icon: Icons.business,
-                zorunlu: true,
-              ),
-              const SizedBox(height: 12),
-
-              // Kisa ad (opsiyonel)
-              _textAlani(
-                controller: _kisaAdController,
-                label: 'Kisa Ad',
-                hint: 'Max 16 karakter',
-                icon: Icons.short_text,
-                maxUzunluk: 16,
-              ),
-              const SizedBox(height: 12),
-
-              // Il ve Ilce yan yana
-              Row(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 700),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: _textAlani(
-                      controller: _ilController,
-                      label: 'Il *',
-                      hint: 'Istanbul',
-                      icon: Icons.location_city,
-                      zorunlu: true,
+                  // ---- TEMEL BILGILER ----
+                  _bolumBaslik('Temel Bilgiler'),
+                  const SizedBox(height: 8),
+
+                  // Firma adi + Kisa ad yan yana
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: _textAlani(
+                          controller: _adController,
+                          label: 'Firma Adi *',
+                          hint: 'ABC Insaat Ltd. Sti.',
+                          icon: Icons.business,
+                          zorunlu: true,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 2,
+                        child: _textAlani(
+                          controller: _kisaAdController,
+                          label: 'Kisa Ad',
+                          hint: 'Max 16 kr.',
+                          icon: Icons.short_text,
+                          maxUzunluk: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Il ve Ilce yan yana
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _textAlani(
+                          controller: _ilController,
+                          label: 'Il *',
+                          hint: 'Istanbul',
+                          icon: Icons.location_city,
+                          zorunlu: true,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _textAlani(
+                          controller: _ilceController,
+                          label: 'Ilce *',
+                          hint: 'Kadikoy',
+                          icon: Icons.location_on,
+                          zorunlu: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ---- ILETISIM BILGILERI ----
+                  _bolumBaslik('Iletisim Bilgileri'),
+                  const SizedBox(height: 8),
+
+                  // Email + Telefon yan yana
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _textAlani(
+                          controller: _emailController,
+                          label: 'Email *',
+                          hint: 'info@firma.com',
+                          icon: Icons.email_outlined,
+                          zorunlu: true,
+                          emailAlani: true,
+                          klavyeTipi: TextInputType.emailAddress,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _textAlani(
+                          controller: _telefonController,
+                          label: 'Telefon *',
+                          hint: '0212 555 1234',
+                          icon: Icons.phone_outlined,
+                          zorunlu: true,
+                          klavyeTipi: TextInputType.phone,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  _textAlani(
+                    controller: _adresController,
+                    label: 'Adres',
+                    hint: 'Firma adresi',
+                    icon: Icons.home_outlined,
+                    maxSatir: 2,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ---- VERGI BILGILERI ----
+                  _bolumBaslik('Vergi Bilgileri'),
+                  const SizedBox(height: 8),
+
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _textAlani(
+                          controller: _vergiDairesiController,
+                          label: 'Vergi Dairesi',
+                          hint: 'Kadikoy VD',
+                          icon: Icons.account_balance,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _textAlani(
+                          controller: _vergiNoController,
+                          label: 'Vergi No',
+                          hint: '1234567890',
+                          icon: Icons.numbers,
+                          klavyeTipi: TextInputType.number,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ---- KAYDET BUTONU ----
+                  SizedBox(
+                    height: 42,
+                    child: ElevatedButton.icon(
+                      onPressed: _kaydediliyor ? null : _kaydet,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: _kaydediliyor
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(widget.duzenleModu ? Icons.save : Icons.add, size: 18),
+                      label: Text(
+                        widget.duzenleModu ? 'Kaydet' : 'Firma Ekle',
+                        style: const TextStyle(fontSize: 14),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _textAlani(
-                      controller: _ilceController,
-                      label: 'Ilce *',
-                      hint: 'Kadikoy',
-                      icon: Icons.location_on,
-                      zorunlu: true,
-                    ),
-                  ),
+
+                  const SizedBox(height: 16),
                 ],
               ),
-              const SizedBox(height: 24),
-
-              // ---- ILETISIM BILGILERI ----
-              _bolumBaslik('Iletisim Bilgileri'),
-              const SizedBox(height: 12),
-
-              _textAlani(
-                controller: _emailController,
-                label: 'Email *',
-                hint: 'info@firma.com',
-                icon: Icons.email_outlined,
-                zorunlu: true,
-                klavyeTipi: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 12),
-
-              _textAlani(
-                controller: _telefonController,
-                label: 'Telefon *',
-                hint: '0212 555 1234',
-                icon: Icons.phone_outlined,
-                zorunlu: true,
-                klavyeTipi: TextInputType.phone,
-              ),
-              const SizedBox(height: 12),
-
-              _textAlani(
-                controller: _adresController,
-                label: 'Adres',
-                hint: 'Firma adresi',
-                icon: Icons.home_outlined,
-                maxSatir: 2,
-              ),
-              const SizedBox(height: 24),
-
-              // ---- VERGI BILGILERI ----
-              _bolumBaslik('Vergi Bilgileri'),
-              const SizedBox(height: 12),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: _textAlani(
-                      controller: _vergiDairesiController,
-                      label: 'Vergi Dairesi',
-                      hint: 'Kadikoy VD',
-                      icon: Icons.account_balance,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _textAlani(
-                      controller: _vergiNoController,
-                      label: 'Vergi No',
-                      hint: '1234567890',
-                      icon: Icons.numbers,
-                      klavyeTipi: TextInputType.number,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-
-              // ---- KAYDET BUTONU ----
-              SizedBox(
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: _kaydediliyor ? null : _kaydet,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: _kaydediliyor
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Icon(widget.duzenleModu ? Icons.save : Icons.add),
-                  label: Text(
-                    widget.duzenleModu ? 'Kaydet' : 'Firma Ekle',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
       ),
@@ -309,12 +337,14 @@ class _FirmaFormScreenState extends State<FirmaFormScreen> {
   }
 
   // Text alani (tekrar eden kodu azaltmak icin)
+  // 📚 DERS: emailAlani parametresi true ise email validasyonu yapar
   Widget _textAlani({
     required TextEditingController controller,
     required String label,
     String? hint,
     IconData? icon,
     bool zorunlu = false,
+    bool emailAlani = false,
     int? maxUzunluk,
     int maxSatir = 1,
     TextInputType? klavyeTipi,
@@ -333,14 +363,22 @@ class _FirmaFormScreenState extends State<FirmaFormScreen> {
         ),
         counterText: '', // Karakter sayacini gizle
       ),
-      validator: zorunlu
-          ? (value) {
-              if (value == null || value.trim().isEmpty) {
-                return '$label gerekli';
-              }
-              return null;
-            }
-          : null,
+      validator: (value) {
+        // Zorunlu alan kontrolu
+        if (zorunlu && (value == null || value.trim().isEmpty)) {
+          return '$label gerekli';
+        }
+        // 📚 DERS: Email format kontrolu
+        // RegExp = Duzgun ifade (Regular Expression)
+        // Basit email formati: abc@def.ghi
+        if (emailAlani && value != null && value.trim().isNotEmpty) {
+          final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+          if (!emailRegex.hasMatch(value.trim())) {
+            return 'Gecerli bir email adresi girin (ornek: info@firma.com)';
+          }
+        }
+        return null;
+      },
     );
   }
 }

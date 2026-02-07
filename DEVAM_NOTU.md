@@ -6,8 +6,8 @@
 ## SON OTURUM BILGISI
 
 - **Tarih:** 7 Subat 2026
-- **Oturum No:** 1
-- **Durum:** Gelistirme ortami kuruldu, ilk uygulama calisti!
+- **Oturum No:** 2
+- **Durum:** Auth + Firma modulu tamamlandi, GitHub'a push edildi!
 
 ---
 
@@ -50,24 +50,27 @@
 26. Multi-tenant middleware yazildi (deps.py: kullanici getir, tenant DB, rol kontrolu)
 27. Firma kayit modulu tamamlandi (Backend CRUD + Flutter liste/form ekrani)
 28. Firma API testi basarili (firma ekleme + listeleme calisiyor)
+29. Git ilk commit yapildi (125 dosya, 9833 satir)
+30. GitHub'a push edildi: https://github.com/ermeseerdogan/osgb-yazilim
 
 ---
 
 ## SIRADA YAPILACAK ISLER
 
-### Hemen Yapilacak
-1. ~~Veritabani semasi tasarimi~~ ✓ TAMAMLANDI
-2. ~~Auth sistemi (JWT + kullanici girisi)~~ ✓ TAMAMLANDI
-3. ~~Login ekrani (Flutter)~~ ✓ TAMAMLANDI
-4. ~~Multi-tenant middleware~~ ✓ TAMAMLANDI
-5. ~~Firma kayit modulu~~ ✓ TAMAMLANDI
+### Tamamlanan
+1. ~~Veritabani semasi tasarimi~~ ✓
+2. ~~Auth sistemi (JWT + kullanici girisi)~~ ✓
+3. ~~Login ekrani (Flutter)~~ ✓
+4. ~~Multi-tenant middleware~~ ✓
+5. ~~Firma kayit modulu~~ ✓
+6. ~~GitHub push~~ ✓
 
-### Sonrasinda
-6. Isyeri kayit modulu
-7. Calisan yonetimi modulu
-8. Ziyaret yonetimi modulu
-9. Dashboard (KPI ve grafikler)
-10. On muhasebe modulu
+### Siradaki (Oturum 3)
+1. Isyeri kayit modulu (Backend API + Flutter ekrani)
+2. Calisan yonetimi modulu (Backend API + Flutter ekrani)
+3. Ziyaret yonetimi modulu
+4. Dashboard (KPI ve grafikler)
+5. On muhasebe modulu
 
 ---
 
@@ -89,19 +92,33 @@
 - listen_addresses: localhost (* yerine degistirildi)
 - Baslatma: pg_ctl start -D "D:\Program Files\17.6-1.1C\data"
 
+### GitHub
+- Repo: https://github.com/ermeseerdogan/osgb-yazilim
+- Remote: origin (https ile, kullanici adi: ermeseerdogan)
+
 ### Backend Calistirma
 - Klasor: D:\Rifki\osgb\backend
 - Sanal ortam: D:\Rifki\osgb\backend\venv
 - Calistirma: venv\Scripts\uvicorn.exe app.main:app --reload --port 8001
 - API Docs: http://localhost:8001/docs
-- Auth endpoint'leri:
+- API endpoint'leri:
   - POST /api/v1/auth/login (form-data, Swagger icin)
   - POST /api/v1/auth/login/json (JSON, Flutter icin)
   - GET /api/v1/auth/ben (token ile kullanici bilgisi)
+  - GET /api/v1/firma (firma listele)
+  - POST /api/v1/firma (firma ekle)
+  - PUT /api/v1/firma/{id} (firma guncelle)
+  - DELETE /api/v1/firma/{id} (firma sil)
 
 ### Frontend Calistirma
 - Klasor: D:\Rifki\osgb\frontend
-- Calistirma: flutter run -d chrome --web-port 3000
+- Calistirma: flutter run -d chrome --web-port 3001
+- Sayfalar: login_screen, dashboard_screen, firma_list_screen, firma_form_screen
+
+### Yerel Ag Erisimi
+- Bilgisayar IP: 192.168.1.9
+- Backend: http://192.168.1.9:8001
+- Flutter: http://192.168.1.9:3001
 
 ---
 
@@ -126,5 +143,5 @@ Claude'a sunu soyle:
 | Oturum | Tarih | Yapilan Is |
 |--------|-------|-----------|
 | 1 | 7 Subat 2026 | Planlama + gelistirme ortami kurulumu + ilk uygulama calisti |
-| 2 | 7 Subat 2026 | Veritabani modelleri + Auth sistemi (login calisiyor!) |
-| 3 | - | (Sonraki: Login ekrani Flutter + Multi-tenant middleware + Firma kayit) |
+| 2 | 7 Subat 2026 | DB modelleri + Auth + Login + Multi-tenant + Firma modulu + GitHub push |
+| 3 | - | (Sonraki: Isyeri kayit + Calisan yonetimi + Ziyaret modulu) |

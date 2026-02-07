@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'login_screen.dart';
 import 'firma_list_screen.dart';
+import 'log_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   // 📚 DERS: Constructor parametresi
@@ -169,6 +170,18 @@ class DashboardScreen extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 // TODO: Fatura listesi sayfasina git
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text('Sistem Loglari'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LogScreen()),
+                );
               },
             ),
           ],

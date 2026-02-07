@@ -13,9 +13,14 @@ from fastapi.middleware.cors import CORSMiddleware
 # Ayarlarımızı içe aktar
 from app.core.config import settings
 
+# Loglama
+from app.core.logger import logger
+from app.middleware.request_logger import RequestLoggerMiddleware
+
 # API Router'lari
 from app.api.v1.auth import router as auth_router
 from app.api.v1.firma import router as firma_router
+from app.api.v1.log import router as log_router
 
 
 # ---- UYGULAMAYI OLUŞTUR ----
@@ -38,12 +43,16 @@ app.add_middleware(
     allow_headers=["*"],         # Tüm header'lar
 )
 
+# ---- ISTEK LOGLAMA MIDDLEWARE ----
+app.add_middleware(RequestLoggerMiddleware)
+
 
 # ---- API ROUTER'LARI KAYDET ----
 # 📚 DERS: include_router ile alt router'lari ana uygulamaya bagliyoruz
 # prefix="/api/v1" -> Tum auth endpoint'leri /api/v1/auth/... olur
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(firma_router, prefix="/api/v1")
+app.include_router(log_router, prefix="/api/v1")
 
 
 # ---- ANA SAYFA ----

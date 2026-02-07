@@ -15,13 +15,17 @@
 # Her endpoint tenant_db_getir kullanir:
 # Token'daki db_name'e gore dogru OSGB DB'sine baglanir.
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, UploadFile, File
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.middleware.deps import mevcut_kullanici_getir, tenant_db_getir, rol_gerekli
-from app.models.master import Kullanici
+from app.models.master import Kullanici, IslemLogEnum
 from app.models.tenant import Firma
+from app.services.log_service import islem_logla
+from app.services.excel_service import excel_export, excel_import, excel_sablon_olustur, FIRMA_ALANLARI
+from app.core.database import get_master_db
 from app.schemas.firma import (
     FirmaCreate, FirmaUpdate, FirmaResponse, FirmaListResponse,
 )
@@ -65,15 +69,21 @@ def firma_listele(
     # Sorgu olustur
     query = db.query(Firma)
 
+    # 📚 DERS: Varsayilan olarak sadece aktif kayitlari getir
+    # aktif=None (varsayilan) -> sadece aktif olanlar
+    # aktif=True  -> sadece aktif olanlar
+    # aktif=False -> sadece pasif olanlar (silinen kayitlar)
+    # Boylece silinen firmalar normal listede gorunmez
+    if aktif is None or aktif is True:
+        query = query.filter(Firma.aktif == True)
+    else:
+        query = query.filter(Firma.aktif == False)
+
     # Arama filtresi
     if arama:
         # 📚 DERS: ilike = case-insensitive LIKE
         # "abc" aradiginda "ABC Insaat", "Abc Ltd." hepsini bulur
         query = query.filter(Firma.ad.ilike(f"%{arama}%"))
-
-    # Aktiflik filtresi
-    if aktif is not None:
-        query = query.filter(Firma.aktif == aktif)
 
     # Toplam kayit sayisi
     toplam = query.count()
@@ -85,6 +95,95 @@ def firma_listele(
     firmalar = query.order_by(Firma.id.desc()).offset(offset).limit(adet).all()
 
     return FirmaListResponse(toplam=toplam, firmalar=firmalar)
+
+
+# =============================================
+# EXCEL ISLEMLERI
+# 📚 DERS: Bu endpoint'ler /{firma_id} ONCESINDE olmali!
+# Yoksa FastAPI "excel" kelimesini firma_id olarak algilar.
+#
+# GET  /excel/export  -> Mevcut verileri Excel'e aktar
+# GET  /excel/sablon  -> Bos sablon indir (iceri aktarim icin)
+# POST /excel/import  -> Excel'den veri yukle
+# =============================================
+
+@router.get("/excel/export")
+def firma_excel_export(
+    arama: Optional[str] = Query(None),
+    kullanici: Kullanici = Depends(mevcut_kullanici_getir),
+    db: Session = Depends(tenant_db_getir),
+):
+    """Mevcut firmalari Excel dosyasina aktar."""
+    query = db.query(Firma).filter(Firma.aktif == True)
+    if arama:
+        query = query.filter(Firma.ad.ilike(f"%{arama}%"))
+    firmalar = query.order_by(Firma.id.desc()).all()
+    excel_bytes = excel_export(firmalar, FIRMA_ALANLARI, sayfa_adi="Firmalar")
+    return Response(
+        content=excel_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=firmalar.xlsx"},
+    )
+
+
+@router.get("/excel/sablon")
+def firma_excel_sablon(
+    kullanici: Kullanici = Depends(mevcut_kullanici_getir),
+):
+    """Bos Excel sablonu indir (iceri aktarim icin)."""
+    sablon_bytes = excel_sablon_olustur(FIRMA_ALANLARI, sayfa_adi="Firma Sablonu")
+    return Response(
+        content=sablon_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=firma_sablon.xlsx"},
+    )
+
+
+@router.post("/excel/import")
+def firma_excel_import(
+    request: Request,
+    dosya: UploadFile = File(..., description="Excel dosyasi (.xlsx)"),
+    kullanici: Kullanici = Depends(
+        rol_gerekli("sistem_admin", "osgb_yoneticisi")
+    ),
+    db: Session = Depends(tenant_db_getir),
+    master_db: Session = Depends(get_master_db),
+):
+    """Excel dosyasindan toplu firma yukle."""
+    if not dosya.filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Sadece Excel dosyasi (.xlsx) yuklenebilir",
+        )
+    icerik = dosya.file.read()
+    sonuc = excel_import(icerik, FIRMA_ALANLARI)
+
+    eklenen = 0
+    atlanan = []
+    for veri in sonuc["basarili"]:
+        mevcut = db.query(Firma).filter(Firma.ad == veri.get("ad")).first()
+        if mevcut:
+            atlanan.append({"satir": 0, "hata": f"'{veri['ad']}' zaten mevcut", "veri": veri})
+            continue
+        yeni_firma = Firma(**veri)
+        db.add(yeni_firma)
+        eklenen += 1
+
+    if eklenen > 0:
+        db.commit()
+        islem_logla(
+            db=master_db, islem_turu=IslemLogEnum.KAYIT_EKLEME, modul="firma",
+            aciklama=f"Excel'den toplu firma yuklendi: {eklenen} adet",
+            kullanici=kullanici, request=request,
+        )
+
+    return {
+        "mesaj": f"{eklenen} firma eklendi",
+        "toplam_satir": sonuc["toplam"],
+        "eklenen": eklenen,
+        "hatali": sonuc["hatali"] + atlanan,
+        "hatali_sayisi": sonuc["hatali_sayisi"] + len(atlanan),
+    }
 
 
 # =============================================
@@ -120,9 +219,11 @@ def firma_detay(
 # =============================================
 @router.post("", response_model=FirmaResponse, status_code=status.HTTP_201_CREATED)
 def firma_ekle(
+    request: Request,
     firma_data: FirmaCreate,
     kullanici: Kullanici = Depends(mevcut_kullanici_getir),
     db: Session = Depends(tenant_db_getir),
+    master_db: Session = Depends(get_master_db),
 ):
     """
     📚 DERS: POST = Yeni kayit olustur.
@@ -151,7 +252,15 @@ def firma_ekle(
     yeni_firma = Firma(**firma_data.model_dump())
     db.add(yeni_firma)
     db.commit()
-    db.refresh(yeni_firma)  # DB'den guncel halini al (id eklenmis hali)
+    db.refresh(yeni_firma)
+
+    # Log kaydi
+    islem_logla(
+        db=master_db, islem_turu=IslemLogEnum.KAYIT_EKLEME, modul="firma",
+        aciklama=f"Yeni firma eklendi: {yeni_firma.ad}",
+        kullanici=kullanici, kayit_id=yeni_firma.id, kayit_turu="Firma",
+        yeni_deger=firma_data.model_dump(), request=request,
+    )
 
     return yeni_firma
 
@@ -163,9 +272,11 @@ def firma_ekle(
 @router.put("/{firma_id}", response_model=FirmaResponse)
 def firma_guncelle(
     firma_id: int,
+    request: Request,
     firma_data: FirmaUpdate,
     kullanici: Kullanici = Depends(mevcut_kullanici_getir),
     db: Session = Depends(tenant_db_getir),
+    master_db: Session = Depends(get_master_db),
 ):
     """
     📚 DERS: PUT = Guncelle.
@@ -184,16 +295,24 @@ def firma_guncelle(
             detail=f"Firma bulunamadi (ID: {firma_id})",
         )
 
-    # Sadece gonderilen alanlari guncelle
+    # Eski degerleri kaydet (log icin)
     guncel_veriler = firma_data.model_dump(exclude_unset=True)
+    eski_degerler = {alan: getattr(firma, alan) for alan in guncel_veriler}
+
+    # Sadece gonderilen alanlari guncelle
     for alan, deger in guncel_veriler.items():
         setattr(firma, alan, deger)
-        # 📚 DERS: setattr(obj, "ad", "Yeni Ad")
-        # obj.ad = "Yeni Ad" ile ayni sey
-        # Dinamik olarak attribute set etmenin yolu
 
     db.commit()
     db.refresh(firma)
+
+    # Log kaydi
+    islem_logla(
+        db=master_db, islem_turu=IslemLogEnum.KAYIT_GUNCELLEME, modul="firma",
+        aciklama=f"Firma guncellendi: {firma.ad}",
+        kullanici=kullanici, kayit_id=firma_id, kayit_turu="Firma",
+        eski_deger=eski_degerler, yeni_deger=guncel_veriler, request=request,
+    )
 
     return firma
 
@@ -205,10 +324,12 @@ def firma_guncelle(
 @router.delete("/{firma_id}")
 def firma_sil(
     firma_id: int,
+    request: Request,
     kullanici: Kullanici = Depends(
         rol_gerekli("sistem_admin", "osgb_yoneticisi")
     ),
     db: Session = Depends(tenant_db_getir),
+    master_db: Session = Depends(get_master_db),
 ):
     """
     📚 DERS: Soft Delete (Yumusak Silme)
@@ -235,5 +356,13 @@ def firma_sil(
     # Soft delete: Aktif -> Pasif
     firma.aktif = False
     db.commit()
+
+    # Log kaydi
+    islem_logla(
+        db=master_db, islem_turu=IslemLogEnum.KAYIT_SILME, modul="firma",
+        aciklama=f"Firma silindi (pasife alindi): {firma.ad}",
+        kullanici=kullanici, kayit_id=firma_id, kayit_turu="Firma",
+        request=request,
+    )
 
     return {"mesaj": f"'{firma.ad}' pasife alindi", "id": firma_id}

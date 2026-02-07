@@ -17,6 +17,7 @@ from sqlalchemy import (
     Text,           # Uzun metin tipi
     ForeignKey,     # Baska tabloya referans (iliski)
     Enum,           # Secenekli tip (admin, uzman, hekim...)
+    JSON,           # JSON veri tipi (esnek veri saklama)
 )
 from sqlalchemy.orm import relationship  # Tablolar arasi iliski
 
@@ -162,3 +163,78 @@ class Kullanici(Base):
 
     def __repr__(self):
         return f"<Kullanici(id={self.id}, email='{self.email}', rol='{self.rol}')>"
+
+
+# ---- ISLEM LOG (AUDIT LOG) TABLOSU ----
+class IslemLogEnum(str, enum.Enum):
+    """Log islem turleri"""
+    GIRIS = "giris"                  # Kullanici giris yapti
+    CIKIS = "cikis"                  # Kullanici cikis yapti
+    GIRIS_BASARISIZ = "giris_basarisiz"  # Yanlis sifre denendi
+    KAYIT_EKLEME = "kayit_ekleme"    # Yeni kayit eklendi
+    KAYIT_GUNCELLEME = "kayit_guncelleme"  # Kayit guncellendi
+    KAYIT_SILME = "kayit_silme"      # Kayit silindi
+    YETKI_HATASI = "yetki_hatasi"    # Yetkisiz erisim denemesi
+    SIFRE_DEGISTIRME = "sifre_degistirme"  # Sifre degistirildi
+    SISTEM = "sistem"                # Sistem olayi
+
+
+class IslemLog(Base):
+    """
+    📚 DERS: Audit Log (Denetim Kaydi)
+
+    Sistemde yapilan HER ISLEMI kaydeder:
+    - Kim yapti? (kullanici_id, email)
+    - Ne zaman yapti? (tarih)
+    - Ne yapti? (islem_turu, aciklama)
+    - Nerede yapti? (modul, ip_adresi)
+    - Eski/yeni deger ne? (eski_deger, yeni_deger)
+
+    Bu kayitlar:
+    1. Guvenlik icin onemli (kim ne yapti?)
+    2. Yasal zorunluluk (KVKK, is guvenligi mevzuati)
+    3. Hata takibi (ne zaman bozuldu?)
+    4. Kullanici davranisi analizi
+    """
+    __tablename__ = "islem_loglari"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Kim yapti?
+    kullanici_id = Column(Integer, ForeignKey("kullanicilar.id"), nullable=True)
+    kullanici_email = Column(String(255))  # Email ayrica saklanir (kullanici silinse bile log kalir)
+    kullanici_rol = Column(String(50))
+    kullanici_ad = Column(String(200))
+
+    # Hangi OSGB?
+    tenant_id = Column(Integer, nullable=True)
+    tenant_ad = Column(String(255), nullable=True)
+
+    # Ne yapti?
+    islem_turu = Column(Enum(IslemLogEnum), nullable=False, index=True)
+    modul = Column(String(100), index=True)  # "firma", "calisan", "ziyaret" vs.
+    aciklama = Column(Text)                  # Okunabilir aciklama
+
+    # Hangi kayit uzerinde?
+    kayit_id = Column(Integer, nullable=True)       # Etkilenen kayitin ID'si
+    kayit_turu = Column(String(100), nullable=True)  # "Firma", "Calisan" vs.
+
+    # Eski ve yeni deger (JSON formatinda)
+    eski_deger = Column(JSON, nullable=True)  # Guncelleme/silme oncesi
+    yeni_deger = Column(JSON, nullable=True)  # Guncelleme/ekleme sonrasi
+
+    # Teknik bilgiler
+    ip_adresi = Column(String(50))
+    user_agent = Column(String(500))      # Tarayici/cihaz bilgisi
+    http_metod = Column(String(10))       # GET, POST, PUT, DELETE
+    endpoint = Column(String(500))        # /api/v1/firma
+
+    # Sonuc
+    basarili = Column(Boolean, default=True)
+    hata_mesaji = Column(Text, nullable=True)
+
+    # Zaman
+    tarih = Column(DateTime, default=datetime.utcnow, index=True)
+
+    def __repr__(self):
+        return f"<IslemLog(id={self.id}, islem='{self.islem_turu}', kullanici='{self.kullanici_email}')>"
