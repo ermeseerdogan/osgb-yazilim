@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'login_screen.dart';
 import 'firma_list_screen.dart';
+import 'isyeri_list_screen.dart';
 import 'log_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -144,7 +145,10 @@ class DashboardScreen extends StatelessWidget {
               title: const Text('Isyerleri'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Isyeri listesi sayfasina git
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const IsyeriListScreen()),
+                );
               },
             ),
             ListTile(
@@ -189,7 +193,10 @@ class DashboardScreen extends StatelessWidget {
       ),
 
       // ---- SAYFA ICERIGI ----
-      body: Padding(
+      // 📚 DERS: SingleChildScrollView = icerik ekrana sigmayinca
+      // otomatik scroll eklenir. Column tek basina kullanilinca
+      // icerik buyukse overflow (tasma) hatasi verir.
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,7 +296,7 @@ class DashboardScreen extends StatelessWidget {
               ],
             ),
 
-            const Spacer(),
+            const SizedBox(height: 48),
 
             // Alt bilgi
             Center(
@@ -323,6 +330,11 @@ class DashboardScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const FirmaListScreen()),
+              );
+            } else if (baslik == 'Isyerleri') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const IsyeriListScreen()),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(

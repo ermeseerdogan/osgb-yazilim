@@ -23,6 +23,7 @@ class IslemLogResponse(BaseModel):
     eski_deger: Optional[Any] = None
     yeni_deger: Optional[Any] = None
     ip_adresi: Optional[str] = None
+    dis_ip_adresi: Optional[str] = None
     http_metod: Optional[str] = None
     endpoint: Optional[str] = None
     basarili: bool = True

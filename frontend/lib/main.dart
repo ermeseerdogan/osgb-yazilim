@@ -8,6 +8,7 @@
 
 // Flutter'in gorsel araclarini ice aktar (buton, text, renk vs.)
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 // Kendi dosyalarimiz
 import 'screens/login_screen.dart';   // Giris ekrani
@@ -31,6 +32,21 @@ class OsgbApp extends StatelessWidget {
     return MaterialApp(
       title: 'OSGB Yonetim Sistemi',
       debugShowCheckedModeBanner: false, // Debug yazisini gizle
+
+      // ---- TURKCE LOKALIZASYON ----
+      // 📚 DERS: DatePicker, TimePicker gibi Material widget'lari
+      // dil dosyalarina ihtiyac duyar. Turkce tarih secici icin
+      // flutter_localizations paketi ve locale ayari gerekir.
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('tr', 'TR'), // Turkce
+        Locale('en', 'US'), // Ingilizce (yedek)
+      ],
+      locale: const Locale('tr', 'TR'),
 
       // ---- TEMA AYARLARI ----
       // 📚 DERS: ThemeData = Tum uygulamanin gorunus ayarlari

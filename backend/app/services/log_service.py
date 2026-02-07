@@ -27,7 +27,57 @@ from app.models.master import IslemLog, IslemLogEnum, Kullanici
 from app.core.logger import logger
 
 
-def islem_logla(
+# ---- DIS IP ADRESI ALMA ----
+# 📚 DERS: Kullanicinin gercek internet IP'sini bulmak icin
+# 2 yontem var:
+# 1) X-Forwarded-For header -> Nginx/Load Balancer arkasindayken
+# 2) Harici API -> request.client.host yerel IP verdiginde
+
+async def dis_ip_al(request: Optional[Request] = None) -> Optional[str]:
+    """
+    📚 DERS: Kullanicinin dis (Public/Internet) IP adresini bul.
+
+    Oncelik sirasi:
+    1. X-Client-Public-IP header (Flutter uygulamasi gonderir)
+       -> Kullanici tarafinda api.ipify.org'dan ogrenilen gercek IP
+    2. X-Forwarded-For header (Nginx/proxy arkasindayken gercek IP)
+    3. X-Real-IP header (bazi proxy'ler bunu kullanir)
+
+    📚 DERS: Neden Flutter'dan gondertiyoruz?
+    Cunku backend'de request.client.host dedigimizde
+    yerel agdaki IC IP gelir (192.168.1.x).
+    api.ipify.org'u backend'den cagirirsak SUNUCUNUN IP'si gelir.
+    Ama biz KULLANICININ internet IP'sini istiyoruz.
+    Kullanici kendi tarayicisindan ipify'a sorunca, KULLANICININ IP'si doner.
+    Bunu X-Client-Public-IP header'i ile backend'e gonderir.
+    """
+    if request:
+        # 📚 DERS: 1. Oncelik - Flutter'dan gelen kullanici dis IP'si
+        # Flutter uygulamasi giris sirasinda api.ipify.org'dan
+        # kullanicinin dis IP'sini ogrenir ve bu header ile gonderir
+        client_public_ip = request.headers.get("x-client-public-ip")
+        if client_public_ip and client_public_ip != "127.0.0.1":
+            return client_public_ip
+
+        # 📚 DERS: 2. Oncelik - Nginx arkasinda calisirken
+        # Nginx gercek kullanici IP'sini X-Forwarded-For'a yazar
+        # Format: "gercek_ip, proxy1_ip, proxy2_ip"
+        forwarded_for = request.headers.get("x-forwarded-for")
+        if forwarded_for:
+            # Ilk IP = gercek kullanici IP'si
+            gercek_ip = forwarded_for.split(",")[0].strip()
+            if gercek_ip and gercek_ip != "127.0.0.1":
+                return gercek_ip
+
+        # 📚 DERS: 3. Oncelik - Bazi proxy'ler X-Real-IP kullanir
+        real_ip = request.headers.get("x-real-ip")
+        if real_ip and real_ip != "127.0.0.1":
+            return real_ip
+
+    return None
+
+
+async def islem_logla(
     db: Session,
     islem_turu: IslemLogEnum,
     modul: str,
@@ -48,20 +98,27 @@ def islem_logla(
 
     Hem veritabanina hem dosyaya log yazar.
     Tek bir fonksiyon cagirisyla her sey kaydedilir.
+
+    Ic IP: request.client.host (yerel ag adresi)
+    Dis IP: X-Forwarded-For veya harici API (internet adresi)
     """
     try:
         # Request'ten bilgi cikart
         ip_adresi = None
+        dis_ip_adresi = None
         user_agent = None
         http_metod = None
         endpoint = None
 
         if request:
-            # 📚 DERS: request.client.host -> Kullanicinin IP adresi
+            # 📚 DERS: request.client.host -> Ic IP (yerel ag)
             ip_adresi = request.client.host if request.client else None
             user_agent = request.headers.get("user-agent", "")[:500]
             http_metod = request.method
             endpoint = str(request.url.path)
+
+            # 📚 DERS: Dis IP (public/internet IP) al
+            dis_ip_adresi = await dis_ip_al(request)
 
         # Kullanici bilgileri
         k_id = None
@@ -95,6 +152,7 @@ def islem_logla(
             eski_deger=eski_deger,
             yeni_deger=yeni_deger,
             ip_adresi=ip_adresi,
+            dis_ip_adresi=dis_ip_adresi,
             user_agent=user_agent,
             http_metod=http_metod,
             endpoint=endpoint,
@@ -109,7 +167,7 @@ def islem_logla(
         log_seviye = "INFO" if basarili else "WARNING"
         logger.info(
             f"[{islem_turu.value}] {modul} | {aciklama} | "
-            f"Kullanici: {k_email or 'anonim'} | IP: {ip_adresi}"
+            f"Kullanici: {k_email or 'anonim'} | Ic IP: {ip_adresi} | Dis IP: {dis_ip_adresi}"
         )
 
     except Exception as e:

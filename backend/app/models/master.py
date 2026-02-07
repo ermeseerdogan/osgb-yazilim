@@ -224,7 +224,8 @@ class IslemLog(Base):
     yeni_deger = Column(JSON, nullable=True)  # Guncelleme/ekleme sonrasi
 
     # Teknik bilgiler
-    ip_adresi = Column(String(50))
+    ip_adresi = Column(String(50))             # Ic IP (yerel ag adresi)
+    dis_ip_adresi = Column(String(50), nullable=True)  # Dis IP (internet/public IP)
     user_agent = Column(String(500))      # Tarayici/cihaz bilgisi
     http_metod = Column(String(10))       # GET, POST, PUT, DELETE
     endpoint = Column(String(500))        # /api/v1/firma

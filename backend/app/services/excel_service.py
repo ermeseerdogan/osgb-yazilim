@@ -40,8 +40,22 @@ FIRMA_ALANLARI = [
     {"alan": "vergi_no",      "baslik": "Vergi No",      "zorunlu": False, "genislik": 15},
 ]
 
+ISYERI_ALANLARI = [
+    {"alan": "ad",                "baslik": "Isyeri Adi",         "zorunlu": True,  "genislik": 30},
+    {"alan": "firma_adi",         "baslik": "Firma Adi",          "zorunlu": False, "genislik": 25},
+    {"alan": "sgk_sicil_no",      "baslik": "SGK Sicil No",       "zorunlu": True,  "genislik": 18},
+    {"alan": "nace_kodu",         "baslik": "NACE Kodu",          "zorunlu": True,  "genislik": 12},
+    {"alan": "nace_aciklama",     "baslik": "NACE Aciklama",      "zorunlu": False, "genislik": 30},
+    {"alan": "tehlike_sinifi",    "baslik": "Tehlike Sinifi",      "zorunlu": True,  "genislik": 18},
+    {"alan": "ana_faaliyet",      "baslik": "Ana Faaliyet",       "zorunlu": False, "genislik": 25},
+    {"alan": "isveren_ad",        "baslik": "Isveren Adi",        "zorunlu": True,  "genislik": 18},
+    {"alan": "isveren_soyad",     "baslik": "Isveren Soyadi",     "zorunlu": True,  "genislik": 18},
+    {"alan": "isveren_vekili_ad", "baslik": "Vekil Adi",          "zorunlu": False, "genislik": 15},
+    {"alan": "isveren_vekili_soyad", "baslik": "Vekil Soyadi",    "zorunlu": False, "genislik": 15},
+    {"alan": "lokasyon",          "baslik": "Lokasyon",           "zorunlu": False, "genislik": 30},
+]
+
 # Ileride eklenecek moduller icin hazir:
-# ISYERI_ALANLARI = [...]
 # CALISAN_ALANLARI = [...]
 # ZIYARET_ALANLARI = [...]
 

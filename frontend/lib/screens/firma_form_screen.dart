@@ -157,6 +157,9 @@ class _FirmaFormScreenState extends State<FirmaFormScreen> {
   Widget build(BuildContext context) {
     // 📚 DERS: OrtakForm tum standart ozellikleri saglar
     // Biz sadece form alanlarini children olarak veriyoruz
+    // 📚 DERS: kayitTuru: 'Firma' parametresi sayesinde
+    // OrtakForm duzenleme modunda "Islem Gecmisi" butonunu gosterir
+    // Bu butona tiklandiginda o firmanin tum log kayitlari acilir
     return OrtakForm(
       formKey: _formKey,
       baslik: widget.duzenleModu ? 'Firma Duzenle' : 'Yeni Firma',
@@ -165,6 +168,7 @@ class _FirmaFormScreenState extends State<FirmaFormScreen> {
       onKaydet: _kaydet,
       onKaydetVeYeni: widget.duzenleModu ? null : _kaydetVeYeni,
       mevcutKayit: widget.firma,
+      kayitTuru: 'Firma',
       children: [
         // ---- TEMEL BILGILER ----
         const FormBolumBaslik(baslik: 'Temel Bilgiler', ikon: Icons.business),

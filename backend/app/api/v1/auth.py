@@ -40,7 +40,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 # Kullanici giris yapar, JWT token alir
 # =============================================
 @router.post("/login", response_model=TokenResponse)
-def login(
+async def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_master_db),
@@ -54,7 +54,7 @@ def login(
         )
         # Basarili giris logu
         kullanici = db.query(Kullanici).filter(Kullanici.email == form_data.username).first()
-        islem_logla(
+        await islem_logla(
             db=db, islem_turu=IslemLogEnum.GIRIS, modul="auth",
             aciklama=f"Basarili giris: {form_data.username}",
             kullanici=kullanici, request=request,
@@ -62,7 +62,7 @@ def login(
         return sonuc
     except HTTPException as e:
         # Basarisiz giris logu
-        islem_logla(
+        await islem_logla(
             db=db, islem_turu=IslemLogEnum.GIRIS_BASARISIZ, modul="auth",
             aciklama=f"Basarisiz giris denemesi: {form_data.username}",
             request=request, basarili=False, hata_mesaji=e.detail,
@@ -75,7 +75,7 @@ def login(
 # POST /api/v1/auth/login/json
 # =============================================
 @router.post("/login/json", response_model=TokenResponse)
-def login_json(
+async def login_json(
     request: Request,
     login_data: LoginRequest,
     db: Session = Depends(get_master_db),
@@ -88,14 +88,14 @@ def login_json(
             db=db,
         )
         kullanici = db.query(Kullanici).filter(Kullanici.email == login_data.email).first()
-        islem_logla(
+        await islem_logla(
             db=db, islem_turu=IslemLogEnum.GIRIS, modul="auth",
             aciklama=f"Basarili giris: {login_data.email}",
             kullanici=kullanici, request=request,
         )
         return sonuc
     except HTTPException as e:
-        islem_logla(
+        await islem_logla(
             db=db, islem_turu=IslemLogEnum.GIRIS_BASARISIZ, modul="auth",
             aciklama=f"Basarisiz giris denemesi: {login_data.email}",
             request=request, basarili=False, hata_mesaji=e.detail,

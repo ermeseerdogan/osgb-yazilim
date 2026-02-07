@@ -1,17 +1,16 @@
 // =============================================
 // LOG EKRANI
-// Sistem islem loglarini goruntuleme
+// Giris/Cikis ve guvenlik loglarini goruntuleme
 // =============================================
 //
 // 📚 DERS: Bu ekran sadece yetkili kullanicilara aciktir.
-// Kim ne zaman ne yapti? sorusunun cevabi burada.
+// Varsayilan olarak giris/cikis loglarini gosterir (guvenlik odakli).
+// Firma, calisan, isyeri loglari kendi formlarinda gorulur.
 //
 // Logda gorunen islemler:
 // - Giris/Cikis (basarili veya basarisiz)
-// - Kayit ekleme (yeni firma, calisan vs.)
-// - Kayit guncelleme (eski ve yeni degerler kayitli)
-// - Kayit silme (pasife alma - veri silinmez!)
 // - Yetki hatasi (izinsiz erisim denemeleri)
+// - Diger modullerin loglari filtre ile erisilebilir
 
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
@@ -33,7 +32,10 @@ class _LogScreenState extends State<LogScreen> {
   String? _hata;
 
   // Filtreler
-  String? _seciliModul;
+  // 📚 DERS: Sistem Loglari sayfasi varsayilan olarak sadece giris/cikis gosterir
+  // Firma/calisan/isyeri loglari kendi formlarinda gorulur
+  // Boylece guvenlik odakli temiz bir log ekrani olur
+  String? _seciliModul = 'auth';
   String? _seciliIslemTuru;
   bool? _seciliBasarili;
   int _seciliGun = 7;
@@ -599,7 +601,8 @@ class _LogScreenState extends State<LogScreen> {
 
               // Teknik bilgiler
               _detayBaslik('Teknik Bilgiler'),
-              _detaySatir('IP Adresi', log['ip_adresi']),
+              _detaySatir('Ic IP', log['ip_adresi']),
+              _detaySatir('Dis IP', log['dis_ip_adresi']),
               _detaySatir('Istek', '${log['http_metod'] ?? ''} ${log['endpoint'] ?? ''}'),
               _detaySatir('Tarih', _tarihFormatla(log['tarih'])),
             ],

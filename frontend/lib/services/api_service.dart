@@ -119,7 +119,7 @@ class ApiService {
   final Dio _dio = Dio(
     BaseOptions(
       // API'nin adresi (backend port'u)
-      baseUrl: 'http://localhost:8002/api/v1',
+      baseUrl: 'http://localhost:8001/api/v1',
       // Timeout: 10 saniye icinde cevap gelmezse hata ver
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
@@ -137,10 +137,46 @@ class ApiService {
   // Kullanici bilgileri (giris yapilinca doldurulur)
   Map<String, dynamic>? _kullaniciBilgi;
 
+  // 📚 DERS: Kullanicinin dis (public/internet) IP adresi
+  // Kullanici uygulamayi actiginda api.ipify.org'dan ogrenilir
+  // ve her istekte backend'e X-Client-Public-IP header'i ile gonderilir.
+  // Boylece backend, kullanicinin gercek internet IP'sini loglar.
+  String? _disIp;
+
   // Getter'lar (disaridan okumak icin)
   String? get token => _token;
   Map<String, dynamic>? get kullaniciBilgi => _kullaniciBilgi;
+  String? get disIp => _disIp;
   bool get girisYapildiMi => _token != null;
+
+  // =============================================
+  // KULLANICININ DIS IP ADRESINI OGREN
+  // 📚 DERS: Bu fonksiyon kullanicinin internet IP'sini bulur.
+  // api.ipify.org = ucretsiz, basit bir "IP'n ne?" servisi.
+  // Kullanici tarayicidan bu siteye istek atar, site IP'yi dondurur.
+  // Boylece backend sunucusunun degil, KULLANICININ IP'si loglanir.
+  // =============================================
+  Future<void> disIpOgren() async {
+    try {
+      final response = await Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 3),
+          receiveTimeout: const Duration(seconds: 3),
+        ),
+      ).get('https://api.ipify.org?format=json');
+
+      if (response.statusCode == 200) {
+        _disIp = response.data['ip'];
+        // Her istekte bu header'i gonder
+        _dio.options.headers['X-Client-Public-IP'] = _disIp;
+      }
+    } catch (e) {
+      // 📚 DERS: Dis IP alinamazsa uygulama DURMASIN!
+      // Internet yok veya ipify cevap vermiyorsa sorun degil,
+      // sadece dis IP loglanamazsa null olarak kalir.
+      _disIp = null;
+    }
+  }
 
   // =============================================
   // GIRIS YAP
@@ -150,6 +186,10 @@ class ApiService {
     // 📚 DERS: try-catch ile hata yakalama
     // Python'daki try-except ile ayni mantik
     try {
+      // 📚 DERS: Giris yapmadan once kullanicinin dis IP'sini ogren
+      // Bu IP, backend tarafinda log'a kaydedilecek
+      await disIpOgren();
+
       // POST istegi gonder
       final response = await _dio.post(
         '/auth/login/json',
@@ -344,11 +384,137 @@ class ApiService {
   }
 
   // =============================================
+  // ISYERI ISLEMLERI
+  // 📚 DERS: Firma islemleriyle ayni mantik.
+  // Ek olarak firma_id filtresi var.
+  // =============================================
+
+  // Isyeri listesi getir
+  Future<Map<String, dynamic>> isyeriListele({
+    int sayfa = 1,
+    int adet = 20,
+    String? arama,
+    int? firmaId,
+  }) async {
+    try {
+      final params = <String, dynamic>{
+        'sayfa': sayfa,
+        'adet': adet,
+      };
+      if (arama != null && arama.isNotEmpty) {
+        params['arama'] = arama;
+      }
+      if (firmaId != null) {
+        params['firma_id'] = firmaId;
+      }
+
+      final response = await _dio.get('/isyeri', queryParameters: params);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Yeni isyeri ekle
+  Future<Map<String, dynamic>> isyeriEkle(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.post('/isyeri', data: data);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Isyeri guncelle
+  Future<Map<String, dynamic>> isyeriGuncelle(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await _dio.put('/isyeri/$id', data: data);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Isyeri sil (pasife cek)
+  Future<void> isyeriSil(int id) async {
+    try {
+      await _dio.delete('/isyeri/$id');
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Isyeri Excel export
+  Future<List<int>> isyeriExcelExport({String? arama, int? firmaId}) async {
+    try {
+      final params = <String, dynamic>{};
+      if (arama != null && arama.isNotEmpty) {
+        params['arama'] = arama;
+      }
+      if (firmaId != null) {
+        params['firma_id'] = firmaId;
+      }
+      final response = await _dio.get(
+        '/isyeri/excel/export',
+        queryParameters: params,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return List<int>.from(response.data);
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Isyeri Excel sablon indir
+  Future<List<int>> isyeriExcelSablon() async {
+    try {
+      final response = await _dio.get(
+        '/isyeri/excel/sablon',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return List<int>.from(response.data);
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Isyeri Excel import
+  Future<Map<String, dynamic>> isyeriExcelImport(List<int> dosyaBytes, String dosyaAdi) async {
+    try {
+      final formData = FormData.fromMap({
+        'dosya': MultipartFile.fromBytes(dosyaBytes, filename: dosyaAdi),
+      });
+      final response = await _dio.post('/isyeri/excel/import', data: formData);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Firma listesi getir (dropdown icin - sadece id ve ad)
+  // 📚 DERS: Isyeri formunda firma secimi icin kullanilir
+  Future<List<Map<String, dynamic>>> firmaListesiGetir() async {
+    try {
+      final response = await _dio.get('/firma', queryParameters: {'adet': 100});
+      final data = response.data as Map<String, dynamic>;
+      final firmalar = (data['firmalar'] as List)
+          .map((f) => {'id': f['id'], 'ad': f['ad']})
+          .toList();
+      return firmalar;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // =============================================
   // API DURUM KONTROLU
   // =============================================
   Future<bool> apiDurumKontrol() async {
     try {
-      final response = await Dio().get('http://localhost:8002/health');
+      final response = await Dio().get('http://localhost:8001/health');
       return response.statusCode == 200;
     } catch (e) {
       return false;

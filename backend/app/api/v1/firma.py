@@ -140,7 +140,7 @@ def firma_excel_sablon(
 
 
 @router.post("/excel/import")
-def firma_excel_import(
+async def firma_excel_import(
     request: Request,
     dosya: UploadFile = File(..., description="Excel dosyasi (.xlsx)"),
     kullanici: Kullanici = Depends(
@@ -171,7 +171,7 @@ def firma_excel_import(
 
     if eklenen > 0:
         db.commit()
-        islem_logla(
+        await islem_logla(
             db=master_db, islem_turu=IslemLogEnum.KAYIT_EKLEME, modul="firma",
             aciklama=f"Excel'den toplu firma yuklendi: {eklenen} adet",
             kullanici=kullanici, request=request,
@@ -218,7 +218,7 @@ def firma_detay(
 # Yeni firma ekle
 # =============================================
 @router.post("", response_model=FirmaResponse, status_code=status.HTTP_201_CREATED)
-def firma_ekle(
+async def firma_ekle(
     request: Request,
     firma_data: FirmaCreate,
     kullanici: Kullanici = Depends(mevcut_kullanici_getir),
@@ -255,7 +255,7 @@ def firma_ekle(
     db.refresh(yeni_firma)
 
     # Log kaydi
-    islem_logla(
+    await islem_logla(
         db=master_db, islem_turu=IslemLogEnum.KAYIT_EKLEME, modul="firma",
         aciklama=f"Yeni firma eklendi: {yeni_firma.ad}",
         kullanici=kullanici, kayit_id=yeni_firma.id, kayit_turu="Firma",
@@ -270,7 +270,7 @@ def firma_ekle(
 # Firma guncelle
 # =============================================
 @router.put("/{firma_id}", response_model=FirmaResponse)
-def firma_guncelle(
+async def firma_guncelle(
     firma_id: int,
     request: Request,
     firma_data: FirmaUpdate,
@@ -307,7 +307,7 @@ def firma_guncelle(
     db.refresh(firma)
 
     # Log kaydi
-    islem_logla(
+    await islem_logla(
         db=master_db, islem_turu=IslemLogEnum.KAYIT_GUNCELLEME, modul="firma",
         aciklama=f"Firma guncellendi: {firma.ad}",
         kullanici=kullanici, kayit_id=firma_id, kayit_turu="Firma",
@@ -322,7 +322,7 @@ def firma_guncelle(
 # Firma sil (aslinda pasife cek)
 # =============================================
 @router.delete("/{firma_id}")
-def firma_sil(
+async def firma_sil(
     firma_id: int,
     request: Request,
     kullanici: Kullanici = Depends(
@@ -358,7 +358,7 @@ def firma_sil(
     db.commit()
 
     # Log kaydi
-    islem_logla(
+    await islem_logla(
         db=master_db, islem_turu=IslemLogEnum.KAYIT_SILME, modul="firma",
         aciklama=f"Firma silindi (pasife alindi): {firma.ad}",
         kullanici=kullanici, kayit_id=firma_id, kayit_turu="Firma",
