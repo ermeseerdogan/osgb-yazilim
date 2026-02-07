@@ -1,0 +1,78 @@
+# =============================================
+# OSGB Yazılımı - Git Ignore Dosyası
+# Bu dosya Git'e "bunları takip etme" der
+# =============================================
+
+# ---------- PYTHON ----------
+# Python derlenmiş dosyaları (gereksiz, otomatik oluşur)
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Sanal ortam (her geliştirici kendi oluşturur)
+venv/
+.venv/
+env/
+
+# Ortam değişkenleri (ŞİFRELER burada, GIT'e ASLA eklenmez!)
+.env
+.env.local
+.env.production
+
+# ---------- FLUTTER ----------
+# Flutter derleme çıktıları
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+
+# ---------- IDE ----------
+# VS Code ayarları (kişisel tercihler)
+.vscode/
+!.vscode/settings.json
+!.vscode/launch.json
+
+# JetBrains IDE
+.idea/
+
+# ---------- İŞLETİM SİSTEMİ ----------
+# Windows
+Thumbs.db
+desktop.ini
+
+# Mac
+.DS_Store
+
+# ---------- BUYUK / KISISEL DOSYALAR ----------
+*.pdf
+*.zip
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.xlsx
+*.html
+
+# ---------- PROJE ÖZEL ----------
+# Yüklenen dosyalar (kullanıcı dosyaları sunucuda kalır)
+uploads/
+media/
+
+# Log dosyaları
+*.log
+logs/
+
+# Veritabanı dosyaları
+*.sqlite3
+*.db
+
+# Docker volumes
+docker-data/
+
+# Node modules (eğer olursa)
+node_modules/
