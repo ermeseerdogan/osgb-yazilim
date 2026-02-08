@@ -42,6 +42,10 @@ class OrtakForm extends StatefulWidget {
   // ve tiklandiginda o kaydin tum loglarini gosterir
   final String? kayitTuru; // Backend'deki kayit_turu alani ile eslesmeli
 
+  // 📚 DERS: Tab yapısında AppBar zaten başlık gösteriyor,
+  // OrtakForm'un kendi AppBar'ını gizlemek için baslikGoster=false yapılır
+  final bool baslikGoster;
+
   const OrtakForm({
     super.key,
     required this.formKey,
@@ -53,6 +57,7 @@ class OrtakForm extends StatefulWidget {
     required this.children,
     this.mevcutKayit,
     this.kayitTuru,
+    this.baslikGoster = true,
   });
 
   @override
@@ -68,6 +73,67 @@ class _OrtakFormState extends State<OrtakForm> {
   Widget build(BuildContext context) {
     // 📚 DERS: PopScope -> Geri tusu veya sayfa kapanmadan once kontrol
     // Eskiden WillPopScope idi, Flutter 3.16+ ile PopScope oldu
+    // 📚 DERS: Form icerigi - hem Scaffold icinde hem tab icinde kullanilabilir
+    final formIcerigi = _kisayolSarmalayici(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1000),
+            child: Form(
+              key: widget.formKey,
+              onChanged: () {
+                if (!_formDegisti) setState(() => _formDegisti = true);
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Form alanlari
+                  ...widget.children,
+
+                  const SizedBox(height: 24),
+
+                  // Butonlar
+                  FormButonlari(
+                    duzenleModu: widget.duzenleModu,
+                    kaydediliyor: widget.kaydediliyor,
+                    onKaydet: widget.onKaydet,
+                    onKaydetVeYeni: widget.onKaydetVeYeni,
+                  ),
+
+                  // Kayit bilgisi (duzenleme modunda)
+                  if (widget.duzenleModu && widget.mevcutKayit != null) ...[
+                    const SizedBox(height: 16),
+                    FormBilgiSatiri(kayit: widget.mevcutKayit!),
+                  ],
+
+                  // 📚 DERS: Islem Gecmisi butonu (duzenleme modunda)
+                  if (widget.duzenleModu &&
+                      widget.kayitTuru != null &&
+                      widget.mevcutKayit?['id'] != null) ...[
+                    const SizedBox(height: 8),
+                    KayitLogGecmisi(
+                      kayitTuru: widget.kayitTuru!,
+                      kayitId: widget.mevcutKayit!['id'],
+                      kayitAdi: widget.mevcutKayit?['ad'] ?? widget.baslik,
+                    ),
+                  ],
+
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // 📚 DERS: baslikGoster=false ise Scaffold sarmasi yapma
+    // Tab yapısında dış Scaffold zaten AppBar sağlıyor
+    if (!widget.baslikGoster) {
+      return formIcerigi;
+    }
+
     return PopScope(
       canPop: !_formDegisti,
       onPopInvokedWithResult: (didPop, result) async {
@@ -83,61 +149,7 @@ class _OrtakFormState extends State<OrtakForm> {
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
         ),
-        body: _kisayolSarmalayici(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1000),
-                child: Form(
-                  key: widget.formKey,
-                  onChanged: () {
-                    if (!_formDegisti) setState(() => _formDegisti = true);
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Form alanlari
-                      ...widget.children,
-
-                      const SizedBox(height: 24),
-
-                      // Butonlar
-                      FormButonlari(
-                        duzenleModu: widget.duzenleModu,
-                        kaydediliyor: widget.kaydediliyor,
-                        onKaydet: widget.onKaydet,
-                        onKaydetVeYeni: widget.onKaydetVeYeni,
-                      ),
-
-                      // Kayit bilgisi (duzenleme modunda)
-                      if (widget.duzenleModu && widget.mevcutKayit != null) ...[
-                        const SizedBox(height: 16),
-                        FormBilgiSatiri(kayit: widget.mevcutKayit!),
-                      ],
-
-                      // 📚 DERS: Islem Gecmisi butonu (duzenleme modunda)
-                      // kayitTuru ve kayit ID verilmisse gosterilir
-                      // Tiklandiginda o kaydin tum loglarini dialog olarak acar
-                      if (widget.duzenleModu &&
-                          widget.kayitTuru != null &&
-                          widget.mevcutKayit?['id'] != null) ...[
-                        const SizedBox(height: 8),
-                        KayitLogGecmisi(
-                          kayitTuru: widget.kayitTuru!,
-                          kayitId: widget.mevcutKayit!['id'],
-                          kayitAdi: widget.mevcutKayit?['ad'] ?? widget.baslik,
-                        ),
-                      ],
-
-                      const SizedBox(height: 16),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+        body: formIcerigi,
       ),
     );
   }

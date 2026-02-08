@@ -301,6 +301,49 @@ class Ziyaret(Base):
 
 
 # =============================================
+# DOKUMAN TABLOSU
+# 📚 DERS: Polimorfik dokuman sistemi.
+# Ayni tablo tum moduller icin kullanilir.
+# kaynak_tipi = "firma", "isyeri", "calisan" vs.
+# kaynak_id = ilgili kaydin ID'si
+# Boylece her module ayni dokuman sistemiyle dosya eklenebilir.
+# =============================================
+class Dokuman(Base):
+    """
+    Tum modullere eklenebilen dokuman/dosya kayitlari.
+    Ornek: Firma'ya vergi levhasi, Isyeri'ne risk raporu,
+    Calisan'a saglik raporu eklenebilir.
+    """
+    __tablename__ = "dokumanlar"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # 📚 DERS: Polimorfik iliski
+    # kaynak_tipi + kaynak_id ile hangi kayda ait oldugu belirlenir
+    # Ornek: kaynak_tipi="firma", kaynak_id=5 → 5 numarali firmaya ait
+    kaynak_tipi = Column(String(50), nullable=False, index=True)  # "firma", "isyeri", "calisan" vs.
+    kaynak_id = Column(Integer, nullable=False, index=True)        # Ilgili kaydin ID'si
+
+    # Dosya bilgileri
+    dosya_adi = Column(String(500), nullable=False)      # Kullanicinin yukleme sirasindaki dosya adi
+    dosya_yolu = Column(String(1000), nullable=False)    # Sunucudaki dosya yolu
+    dosya_tipi = Column(String(100))                      # MIME type: application/pdf, image/jpeg vs.
+    dosya_boyutu = Column(Integer)                        # Byte cinsinden boyut
+    aciklama = Column(String(500))                        # Kullanicinin girdigi aciklama
+
+    # Yukleyen bilgisi
+    yukleyen_id = Column(Integer)                         # Yukleyen kullanicinin ID'si
+    yukleyen_adi = Column(String(255))                    # Yukleyen kullanicinin adi
+
+    # Durum
+    aktif = Column(Boolean, default=True)
+    olusturma_tarihi = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Dokuman(id={self.id}, dosya='{self.dosya_adi}', kaynak='{self.kaynak_tipi}:{self.kaynak_id}')>"
+
+
+# =============================================
 # ON MUHASEBE TABLOLARI
 # =============================================
 class CariHesap(Base):

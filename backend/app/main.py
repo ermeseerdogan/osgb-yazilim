@@ -22,6 +22,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.firma import router as firma_router
 from app.api.v1.log import router as log_router
 from app.api.v1.isyeri import router as isyeri_router
+from app.api.v1.dokuman import router as dokuman_router
 
 
 # ---- UYGULAMAYI OLUŞTUR ----
@@ -55,6 +56,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(firma_router, prefix="/api/v1")
 app.include_router(log_router, prefix="/api/v1")
 app.include_router(isyeri_router, prefix="/api/v1")
+app.include_router(dokuman_router, prefix="/api/v1")
 
 
 # ---- ANA SAYFA ----

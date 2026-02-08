@@ -18,6 +18,7 @@ import 'package:dio/dio.dart';
 import 'dart:html' as html;
 import '../services/api_service.dart';
 import '../widgets/ortak_form.dart';
+import '../widgets/dokuman_tab.dart';
 
 class IsyeriFormScreen extends StatefulWidget {
   final Map<String, dynamic>? isyeri;
@@ -508,18 +509,10 @@ class _IsyeriFormScreenState extends State<IsyeriFormScreen> {
     html.window.open(url, '_blank');
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return OrtakForm(
-      formKey: _formKey,
-      baslik: widget.duzenleModu ? 'Isyeri Duzenle' : 'Yeni Isyeri',
-      duzenleModu: widget.duzenleModu,
-      kaydediliyor: _kaydediliyor,
-      onKaydet: _kaydet,
-      onKaydetVeYeni: widget.duzenleModu ? null : _kaydetVeYeni,
-      mevcutKayit: widget.isyeri,
-      kayitTuru: 'Isyeri',
-      children: [
+  // 📚 DERS: Form icerigini ayri metod olarak cikariyoruz
+  // Boylece hem tab'li hem tab'siz kullanimi destekleriz.
+  List<Widget> _formIcerigi() {
+    return [
         // ---- FIRMA SECIMI ----
         const FormBolumBaslik(baslik: 'Firma Secimi', ikon: Icons.business),
         const SizedBox(height: 8),
@@ -895,7 +888,82 @@ class _IsyeriFormScreenState extends State<IsyeriFormScreen> {
             ),
           ],
         ),
-      ],
+      ];
+  }
+
+  // =============================================
+  // BUILD METODU
+  // 📚 DERS: Duzenleme modunda TabBar ile 2 tab gosteriyoruz:
+  // 1. Bilgiler tab'i = mevcut form alanlari
+  // 2. Dokumanlar tab'i = dosya yukleme/listeleme
+  //
+  // Yeni kayit modunda henuz ID yok, o yuzden sadece form gosterilir.
+  // Kayit yapildiktan sonra duzenleme ekraninda dokumanlar gorunur.
+  // =============================================
+  @override
+  Widget build(BuildContext context) {
+    // 📚 DERS: Yeni kayit modunda tab yok, direkt form goster
+    if (!widget.duzenleModu) {
+      return OrtakForm(
+        formKey: _formKey,
+        baslik: 'Yeni Isyeri',
+        duzenleModu: false,
+        kaydediliyor: _kaydediliyor,
+        onKaydet: _kaydet,
+        onKaydetVeYeni: _kaydetVeYeni,
+        mevcutKayit: null,
+        kayitTuru: 'Isyeri',
+        children: _formIcerigi(),
+      );
+    }
+
+    // 📚 DERS: Duzenleme modunda DefaultTabController ile 2 tab
+    // DefaultTabController = tab sayisini ve secili tab'i yonetir
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Isyeri Duzenle'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Colors.white,
+          bottom: const TabBar(
+            indicatorColor: Colors.white,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            tabs: [
+              Tab(icon: Icon(Icons.edit_note), text: 'Bilgiler'),
+              Tab(icon: Icon(Icons.attach_file), text: 'Dokumanlar'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            // ---- TAB 1: BILGILER ----
+            SingleChildScrollView(
+              child: OrtakForm(
+                formKey: _formKey,
+                baslik: '', // AppBar'da zaten baslik var
+                baslikGoster: false,
+                duzenleModu: true,
+                kaydediliyor: _kaydediliyor,
+                onKaydet: _kaydet,
+                onKaydetVeYeni: null,
+                mevcutKayit: widget.isyeri,
+                kayitTuru: 'Isyeri',
+                children: _formIcerigi(),
+              ),
+            ),
+
+            // ---- TAB 2: DOKUMANLAR ----
+            SingleChildScrollView(
+              child: DokumanTab(
+                kaynakTipi: 'isyeri',
+                kaynakId: widget.isyeri!['id'],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -149,6 +149,10 @@ class ApiService {
   String? get disIp => _disIp;
   bool get girisYapildiMi => _token != null;
 
+  // 📚 DERS: Static getter - Singleton uzerinden token'a erisim
+  // Dosya indirme gibi islemlerde URL'e token eklemek icin kullanilir
+  static String? tokenGetir() => _instance._token;
+
   // =============================================
   // KULLANICININ DIS IP ADRESINI OGREN
   // 📚 DERS: Bu fonksiyon kullanicinin internet IP'sini bulur.
@@ -504,6 +508,87 @@ class ApiService {
           .map((f) => {'id': f['id'], 'ad': f['ad']})
           .toList();
       return firmalar;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // =============================================
+  // DOKUMAN ISLEMLERI
+  // 📚 DERS: Polimorfik dokuman sistemi.
+  // Tum moduller (firma, isyeri, calisan vs.) ayni metodlari kullanir.
+  // kaynakTipi = "firma", "isyeri" vs.
+  // kaynakId = ilgili kaydin ID'si
+  // =============================================
+
+  // Dokuman listesi getir
+  Future<Map<String, dynamic>> dokumanListele(String kaynakTipi, int kaynakId) async {
+    try {
+      final response = await _dio.get('/dokuman/$kaynakTipi/$kaynakId');
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Dokuman yukle (dosya + aciklama)
+  // 📚 DERS: MultipartFile ile dosya yukleme
+  // Web'de dosya secimi dart:html ile yapilir,
+  // secilen dosyanin bytes'lari buraya gelir.
+  Future<Map<String, dynamic>> dokumanYukle({
+    required String kaynakTipi,
+    required int kaynakId,
+    required List<int> dosyaBytes,
+    required String dosyaAdi,
+    String? aciklama,
+  }) async {
+    try {
+      // 📚 DERS: MultipartFile ile dosya gonderimi
+      // Content-Type otomatik olarak multipart/form-data olur
+      final formData = FormData.fromMap({
+        'dosya': MultipartFile.fromBytes(dosyaBytes, filename: dosyaAdi),
+        if (aciklama != null && aciklama.isNotEmpty) 'aciklama': aciklama,
+      });
+      final response = await _dio.post(
+        '/dokuman/$kaynakTipi/$kaynakId/yukle',
+        data: formData,
+        // 📚 DERS: Dosya yukleme icin timeout'u artiriyoruz
+        // Buyuk dosyalar uzun surebilir, normal 10sn yetmez
+        options: Options(
+          sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Dokuman indir (bytes olarak)
+  // 📚 DERS: Path degisti: /dokuman/indir/{id}
+  // Cunku /dokuman/{kaynak_tipi}/{kaynak_id} ile cakisiyordu!
+  Future<List<int>> dokumanIndir(int dokumanId) async {
+    try {
+      final response = await _dio.get(
+        '/dokuman/indir/$dokumanId',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return List<int>.from(response.data);
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Dokuman indirme URL'i (tarayicida yeni sekmede acmak icin)
+  String dokumanIndirUrl(int dokumanId) {
+    return 'http://localhost:8001/api/v1/dokuman/indir/$dokumanId';
+  }
+
+  // Dokuman sil
+  Future<void> dokumanSil(int dokumanId) async {
+    try {
+      await _dio.delete('/dokuman/$dokumanId');
     } on DioException catch (e) {
       throw Exception(_kullaniciDostuHata(e));
     }

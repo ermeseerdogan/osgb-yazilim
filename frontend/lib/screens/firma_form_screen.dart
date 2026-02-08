@@ -10,6 +10,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../widgets/ortak_form.dart';
+import '../widgets/dokuman_tab.dart';
 
 class FirmaFormScreen extends StatefulWidget {
   final Map<String, dynamic>? firma;
@@ -153,155 +154,207 @@ class _FirmaFormScreenState extends State<FirmaFormScreen> {
     }
   }
 
+  // 📚 DERS: Form icerigini metod olarak cikariyoruz
+  // Tab yapısında ve normal modda ayni icerik kullanılır
+  List<Widget> _formIcerigi() {
+    return [
+      // ---- TEMEL BILGILER ----
+      const FormBolumBaslik(baslik: 'Temel Bilgiler', ikon: Icons.business),
+      const SizedBox(height: 8),
+
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: FormTextAlani(
+              controller: _adController,
+              label: 'Firma Adi',
+              hint: 'ABC Insaat Ltd. Sti.',
+              icon: Icons.business,
+              zorunlu: true,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 2,
+            child: FormTextAlani(
+              controller: _kisaAdController,
+              label: 'Kisa Ad',
+              hint: 'Max 16 kr.',
+              icon: Icons.short_text,
+              maxUzunluk: 16,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: FormTextAlani(
+              controller: _ilController,
+              label: 'Il',
+              hint: 'Istanbul',
+              icon: Icons.location_city,
+              zorunlu: true,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: FormTextAlani(
+              controller: _ilceController,
+              label: 'Ilce',
+              hint: 'Kadikoy',
+              icon: Icons.location_on,
+              zorunlu: true,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+
+      // ---- ILETISIM BILGILERI ----
+      const FormBolumBaslik(baslik: 'Iletisim Bilgileri', ikon: Icons.contact_phone),
+      const SizedBox(height: 8),
+
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: FormTextAlani(
+              controller: _emailController,
+              label: 'Email',
+              hint: 'info@firma.com',
+              icon: Icons.email_outlined,
+              zorunlu: true,
+              emailAlani: true,
+              klavyeTipi: TextInputType.emailAddress,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: FormTextAlani(
+              controller: _telefonController,
+              label: 'Telefon',
+              hint: '0212 555 1234',
+              icon: Icons.phone_outlined,
+              zorunlu: true,
+              klavyeTipi: TextInputType.phone,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+
+      FormTextAlani(
+        controller: _adresController,
+        label: 'Adres',
+        hint: 'Firma adresi',
+        icon: Icons.home_outlined,
+        maxSatir: 2,
+      ),
+      const SizedBox(height: 16),
+
+      // ---- VERGI BILGILERI ----
+      const FormBolumBaslik(baslik: 'Vergi Bilgileri', ikon: Icons.account_balance),
+      const SizedBox(height: 8),
+
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: FormTextAlani(
+              controller: _vergiDairesiController,
+              label: 'Vergi Dairesi',
+              hint: 'Kadikoy VD',
+              icon: Icons.account_balance,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: FormTextAlani(
+              controller: _vergiNoController,
+              label: 'Vergi No',
+              hint: '1234567890',
+              icon: Icons.numbers,
+              klavyeTipi: TextInputType.number,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+
+      // ---- NOTLAR ----
+      FormNotAlani(controller: _notController),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 📚 DERS: OrtakForm tum standart ozellikleri saglar
-    // Biz sadece form alanlarini children olarak veriyoruz
-    // 📚 DERS: kayitTuru: 'Firma' parametresi sayesinde
-    // OrtakForm duzenleme modunda "Islem Gecmisi" butonunu gosterir
-    // Bu butona tiklandiginda o firmanin tum log kayitlari acilir
-    return OrtakForm(
-      formKey: _formKey,
-      baslik: widget.duzenleModu ? 'Firma Duzenle' : 'Yeni Firma',
-      duzenleModu: widget.duzenleModu,
-      kaydediliyor: _kaydediliyor,
-      onKaydet: _kaydet,
-      onKaydetVeYeni: widget.duzenleModu ? null : _kaydetVeYeni,
-      mevcutKayit: widget.firma,
-      kayitTuru: 'Firma',
-      children: [
-        // ---- TEMEL BILGILER ----
-        const FormBolumBaslik(baslik: 'Temel Bilgiler', ikon: Icons.business),
-        const SizedBox(height: 8),
+    // 📚 DERS: Yeni kayit modunda tab yok, direkt form goster
+    if (!widget.duzenleModu) {
+      return OrtakForm(
+        formKey: _formKey,
+        baslik: 'Yeni Firma',
+        duzenleModu: false,
+        kaydediliyor: _kaydediliyor,
+        onKaydet: _kaydet,
+        onKaydetVeYeni: _kaydetVeYeni,
+        mevcutKayit: null,
+        kayitTuru: 'Firma',
+        children: _formIcerigi(),
+      );
+    }
 
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    // 📚 DERS: Duzenleme modunda 2 tab: Bilgiler + Dokumanlar
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Firma Duzenle'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Colors.white,
+          bottom: const TabBar(
+            indicatorColor: Colors.white,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            tabs: [
+              Tab(icon: Icon(Icons.edit_note), text: 'Bilgiler'),
+              Tab(icon: Icon(Icons.attach_file), text: 'Dokumanlar'),
+            ],
+          ),
+        ),
+        body: TabBarView(
           children: [
-            Expanded(
-              flex: 3,
-              child: FormTextAlani(
-                controller: _adController,
-                label: 'Firma Adi',
-                hint: 'ABC Insaat Ltd. Sti.',
-                icon: Icons.business,
-                zorunlu: true,
+            // ---- TAB 1: BILGILER ----
+            SingleChildScrollView(
+              child: OrtakForm(
+                formKey: _formKey,
+                baslik: '',
+                baslikGoster: false,
+                duzenleModu: true,
+                kaydediliyor: _kaydediliyor,
+                onKaydet: _kaydet,
+                onKaydetVeYeni: null,
+                mevcutKayit: widget.firma,
+                kayitTuru: 'Firma',
+                children: _formIcerigi(),
               ),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 2,
-              child: FormTextAlani(
-                controller: _kisaAdController,
-                label: 'Kisa Ad',
-                hint: 'Max 16 kr.',
-                icon: Icons.short_text,
-                maxUzunluk: 16,
+
+            // ---- TAB 2: DOKUMANLAR ----
+            SingleChildScrollView(
+              child: DokumanTab(
+                kaynakTipi: 'firma',
+                kaynakId: widget.firma!['id'],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: FormTextAlani(
-                controller: _ilController,
-                label: 'Il',
-                hint: 'Istanbul',
-                icon: Icons.location_city,
-                zorunlu: true,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FormTextAlani(
-                controller: _ilceController,
-                label: 'Ilce',
-                hint: 'Kadikoy',
-                icon: Icons.location_on,
-                zorunlu: true,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // ---- ILETISIM BILGILERI ----
-        const FormBolumBaslik(baslik: 'Iletisim Bilgileri', ikon: Icons.contact_phone),
-        const SizedBox(height: 8),
-
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: FormTextAlani(
-                controller: _emailController,
-                label: 'Email',
-                hint: 'info@firma.com',
-                icon: Icons.email_outlined,
-                zorunlu: true,
-                emailAlani: true,
-                klavyeTipi: TextInputType.emailAddress,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FormTextAlani(
-                controller: _telefonController,
-                label: 'Telefon',
-                hint: '0212 555 1234',
-                icon: Icons.phone_outlined,
-                zorunlu: true,
-                klavyeTipi: TextInputType.phone,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-
-        FormTextAlani(
-          controller: _adresController,
-          label: 'Adres',
-          hint: 'Firma adresi',
-          icon: Icons.home_outlined,
-          maxSatir: 2,
-        ),
-        const SizedBox(height: 16),
-
-        // ---- VERGI BILGILERI ----
-        const FormBolumBaslik(baslik: 'Vergi Bilgileri', ikon: Icons.account_balance),
-        const SizedBox(height: 8),
-
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: FormTextAlani(
-                controller: _vergiDairesiController,
-                label: 'Vergi Dairesi',
-                hint: 'Kadikoy VD',
-                icon: Icons.account_balance,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FormTextAlani(
-                controller: _vergiNoController,
-                label: 'Vergi No',
-                hint: '1234567890',
-                icon: Icons.numbers,
-                klavyeTipi: TextInputType.number,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // ---- NOTLAR ----
-        FormNotAlani(controller: _notController),
-      ],
+      ),
     );
   }
 }
