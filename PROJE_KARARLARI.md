@@ -1,8 +1,9 @@
+
 # OSGB YAZILIMI - PROJE KARARLARI VE TERCİHLER
 ## Son Güncelleme: 7 Şubat 2026
 
 ---
-
+test
 ## 1. PROJE TANIMI
 
 - **Proje Adı:** OSGB Yönetim Yazılımı
