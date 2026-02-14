@@ -119,7 +119,7 @@ class ApiService {
   final Dio _dio = Dio(
     BaseOptions(
       // API'nin adresi (backend port'u)
-      baseUrl: 'http://localhost:8001/api/v1',
+      baseUrl: 'http://62.171.185.38:8001/api/v1',
       // Timeout: 10 saniye icinde cevap gelmezse hata ver
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
@@ -582,7 +582,7 @@ class ApiService {
 
   // Dokuman indirme URL'i (tarayicida yeni sekmede acmak icin)
   String dokumanIndirUrl(int dokumanId) {
-    return 'http://localhost:8001/api/v1/dokuman/indir/$dokumanId';
+    return 'http://62.171.185.38:8001/api/v1/dokuman/indir/$dokumanId';
   }
 
   // Dokuman sil
@@ -599,7 +599,7 @@ class ApiService {
   // =============================================
   Future<bool> apiDurumKontrol() async {
     try {
-      final response = await Dio().get('http://localhost:8001/health');
+      final response = await Dio().get('http://62.171.185.38:8001/health');
       return response.statusCode == 200;
     } catch (e) {
       return false;
