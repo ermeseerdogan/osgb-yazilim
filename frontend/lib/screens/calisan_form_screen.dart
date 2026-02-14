@@ -87,11 +87,13 @@ class _CalisanFormScreenState extends State<CalisanFormScreen> {
   Future<void> _isyerleriYukle() async {
     try {
       final isyerleri = await _apiService.isyeriListesiGetir();
-      setState(() {
-        _isyerleri = isyerleri;
-      });
+      if (mounted) {
+        setState(() {
+          _isyerleri = isyerleri;
+        });
+      }
     } catch (e) {
-      // Hata olursa bos birakilir
+      debugPrint('Isyeri listesi yuklenemedi: $e');
     }
   }
 

@@ -18,13 +18,33 @@
 #       request=request,
 #   )
 
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional, Any
 from sqlalchemy.orm import Session
 from fastapi import Request
 
 from app.models.master import IslemLog, IslemLogEnum, Kullanici
 from app.core.logger import logger
+
+
+def _json_uyumlu_dict(veri: Optional[dict]) -> Optional[dict]:
+    """
+    Dict icindeki date/datetime objelerini string'e cevirir.
+    PostgreSQL JSON kolonuna yazarken serialization hatasi onlenir.
+    """
+    if veri is None:
+        return None
+    sonuc = {}
+    for k, v in veri.items():
+        if isinstance(v, datetime):
+            sonuc[k] = v.isoformat()
+        elif isinstance(v, date):
+            sonuc[k] = v.isoformat()
+        elif isinstance(v, dict):
+            sonuc[k] = _json_uyumlu_dict(v)
+        else:
+            sonuc[k] = v
+    return sonuc
 
 
 # ---- DIS IP ADRESI ALMA ----
@@ -136,7 +156,7 @@ async def islem_logla(
             if not k_tenant_id:
                 k_tenant_id = kullanici.tenant_id
 
-        # DB'ye kaydet
+        # DB'ye kaydet (date objelerini string'e cevir)
         log = IslemLog(
             kullanici_id=k_id,
             kullanici_email=k_email,
@@ -149,8 +169,8 @@ async def islem_logla(
             aciklama=aciklama,
             kayit_id=kayit_id,
             kayit_turu=kayit_turu,
-            eski_deger=eski_deger,
-            yeni_deger=yeni_deger,
+            eski_deger=_json_uyumlu_dict(eski_deger),
+            yeni_deger=_json_uyumlu_dict(yeni_deger),
             ip_adresi=ip_adresi,
             dis_ip_adresi=dis_ip_adresi,
             user_agent=user_agent,

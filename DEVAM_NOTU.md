@@ -5,9 +5,9 @@
 
 ## SON OTURUM BILGISI
 
-- **Tarih:** 7 Subat 2026
-- **Oturum No:** 2
-- **Durum:** Auth + Firma modulu tamamlandi, GitHub'a push edildi!
+- **Tarih:** 14 Subat 2026
+- **Oturum No:** 3
+- **Durum:** Calisan modulu tamamlandi, sunucu kuruldu, GitHub'a push edildi!
 
 ---
 
@@ -31,6 +31,20 @@
 15. Git repo olusturuldu + .gitignore eklendi
 16. Backend iskeleti olusturuldu (Python FastAPI)
 17. Frontend iskeleti olusturuldu (Flutter)
+
+### Oturum 3 - Sunucu + Calisan Modulu
+31. Contabo VPS kuruldu (Ubuntu, XFCE masaustu, XRDP)
+32. Backend sunucuya deploy edildi (systemd + Nginx)
+33. Frontend sunucuya deploy edildi (Flutter web build)
+34. Docker kuruldu
+35. Calisan modulu tamamlandi:
+    - Backend: Schema (CalisanCreate/Update/Response), API endpoints (CRUD + Excel)
+    - Frontend: calisan_list_screen (tablo, kolon secici, filtreleme, gruplama, isyeri filtresi)
+    - Frontend: calisan_form_screen (isyeri dropdown, kisisel/is/saglik bilgileri, dokumanlar tab)
+    - api_service.dart: calisan CRUD + Excel + isyeri dropdown metodlari
+    - Dashboard entegrasyonu (menu + hizli erisim karti)
+    - CALISAN_ALANLARI Excel alan haritasi
+36. GitHub'a push edildi
 
 ### Oturum 2 - Veritabani + Auth Sistemi
 18. Master DB modelleri olusturuldu (Tenant, Kullanici, RolEnum, AbonelikDurumEnum)
@@ -65,12 +79,13 @@
 5. ~~Firma kayit modulu~~ ✓
 6. ~~GitHub push~~ ✓
 
-### Siradaki (Oturum 3)
-1. Isyeri kayit modulu (Backend API + Flutter ekrani)
-2. Calisan yonetimi modulu (Backend API + Flutter ekrani)
-3. Ziyaret yonetimi modulu
-4. Dashboard (KPI ve grafikler)
-5. On muhasebe modulu
+### Siradaki (Oturum 4)
+1. Bolum modulu (isyeri ici departmanlar)
+2. Ziyaret yonetimi modulu
+3. Personel modulu (ISG Uzmani, Isyeri Hekimi, DSP)
+4. Sozlesme/Atama modulu (isyeri-personel eslestirme)
+5. Dashboard KPI ve grafikler
+6. On muhasebe modulu
 
 ---
 
@@ -109,6 +124,13 @@
   - POST /api/v1/firma (firma ekle)
   - PUT /api/v1/firma/{id} (firma guncelle)
   - DELETE /api/v1/firma/{id} (firma sil)
+  - GET /api/v1/calisan (calisan listele + isyeri filtresi)
+  - POST /api/v1/calisan (calisan ekle)
+  - PUT /api/v1/calisan/{id} (calisan guncelle)
+  - DELETE /api/v1/calisan/{id} (calisan sil - pasife cek)
+  - GET /api/v1/calisan/excel/export (Excel'e aktar)
+  - GET /api/v1/calisan/excel/sablon (bos sablon indir)
+  - POST /api/v1/calisan/excel/import (Excel'den toplu yukle)
 
 ### Frontend Calistirma
 - Klasor: D:\Rifki\osgb\frontend
@@ -144,4 +166,5 @@ Claude'a sunu soyle:
 |--------|-------|-----------|
 | 1 | 7 Subat 2026 | Planlama + gelistirme ortami kurulumu + ilk uygulama calisti |
 | 2 | 7 Subat 2026 | DB modelleri + Auth + Login + Multi-tenant + Firma modulu + GitHub push |
-| 3 | - | (Sonraki: Isyeri kayit + Calisan yonetimi + Ziyaret modulu) |
+| 3 | 14 Subat 2026 | Sunucu kurulumu + Calisan modulu + Docker + GitHub push |
+| 4 | - | (Sonraki: Bolum + Ziyaret + Personel + Sozlesme modulleri) |

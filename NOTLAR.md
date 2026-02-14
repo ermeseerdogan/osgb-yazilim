@@ -9,9 +9,10 @@
 - [x] Ortak Widgetlar (OrtakForm, OrtakListe, FormBolumBaslik vb.)
 - [x] Turkce Lokalizasyon (DatePicker vb.)
 - [x] Geocoding (Nominatim + Haritada Goster)
+- [x] Calisan (CRUD + Excel + Log + Isyeri filtresi + Dokuman)
 
 ## Siradaki Moduller
-- [ ] Calisan (Isyerindeki personel kayitlari)
+- [x] Calisan (CRUD + Excel + Log + Isyeri filtresi + Dokuman)
 - [ ] Bolum (Isyeri ici departmanlar)
 - [ ] Ziyaret (Saha ziyaret kayitlari)
 - [ ] Personel - ISG Uzmani / Isyeri Hekimi / DSP (OSGB calisanlari)

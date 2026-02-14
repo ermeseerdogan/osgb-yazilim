@@ -641,7 +641,7 @@ class ApiService {
   // 📚 DERS: Calisan formunda isyeri secimi icin kullanilir
   Future<List<Map<String, dynamic>>> isyeriListesiGetir() async {
     try {
-      final response = await _dio.get('/isyeri', queryParameters: {'adet': 200});
+      final response = await _dio.get('/isyeri', queryParameters: {'adet': 100});
       final data = response.data as Map<String, dynamic>;
       final isyerleri = (data['isyerleri'] as List)
           .map((i) => {'id': i['id'], 'ad': i['ad']})
