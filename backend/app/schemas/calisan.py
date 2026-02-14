@@ -85,6 +85,8 @@ class CalisanResponse(BaseModel):
     bolum: Optional[str] = None
     kan_grubu: Optional[str] = None
 
+    profil_foto_url: Optional[str] = None
+
     aktif: bool
     olusturma_tarihi: Optional[datetime] = None
     guncelleme_tarihi: Optional[datetime] = None

@@ -16,9 +16,12 @@
 # Token'daki db_name'e gore dogru OSGB DB'sine baglanir.
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, UploadFile, File
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
 from sqlalchemy.orm import Session
 from typing import Optional
+import os
+import uuid
+from pathlib import Path
 
 from app.middleware.deps import mevcut_kullanici_getir, tenant_db_getir, rol_gerekli
 from app.models.master import Kullanici, IslemLogEnum
@@ -184,6 +187,138 @@ async def firma_excel_import(
         "hatali": sonuc["hatali"] + atlanan,
         "hatali_sayisi": sonuc["hatali_sayisi"] + len(atlanan),
     }
+
+
+# =============================================
+# LOGO ISLEMLERI
+# =============================================
+
+IZINLI_RESIM_UZANTILARI = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+MAX_LOGO_BOYUTU = 5 * 1024 * 1024  # 5 MB
+
+@router.post("/{firma_id}/logo")
+async def firma_logo_yukle(
+    firma_id: int,
+    request: Request,
+    logo: UploadFile = File(..., description="Logo dosyasi (jpg, png, gif, webp)"),
+    kullanici: Kullanici = Depends(mevcut_kullanici_getir),
+    db: Session = Depends(tenant_db_getir),
+):
+    """Firmaya logo yukle. Mevcut logo varsa degistirir."""
+    firma = db.query(Firma).filter(Firma.id == firma_id).first()
+    if not firma:
+        raise HTTPException(status_code=404, detail="Firma bulunamadi")
+
+    dosya_adi = logo.filename or "logo.jpg"
+    uzanti = os.path.splitext(dosya_adi)[1].lower()
+    if uzanti not in IZINLI_RESIM_UZANTILARI:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Gecersiz dosya formati. Izinli: {', '.join(IZINLI_RESIM_UZANTILARI)}",
+        )
+
+    icerik = await logo.read()
+    if len(icerik) > MAX_LOGO_BOYUTU:
+        raise HTTPException(status_code=400, detail="Dosya boyutu 5 MB'i gecemez")
+
+    # Eski logoyu sil
+    if firma.logo_url and os.path.exists(firma.logo_url):
+        try:
+            os.remove(firma.logo_url)
+        except OSError:
+            pass
+
+    from app.core.security import token_coz
+    token_str = request.headers.get("authorization", "").replace("Bearer ", "")
+    payload = token_coz(token_str)
+    db_name = payload.get("db_name", "default")
+    dizin = Path("uploads") / db_name / "firma" / str(firma_id)
+    dizin.mkdir(parents=True, exist_ok=True)
+
+    dosya_uuid = uuid.uuid4().hex[:8]
+    kayit_adi = f"logo_{dosya_uuid}{uzanti}"
+    tam_yol = dizin / kayit_adi
+
+    with open(tam_yol, "wb") as f:
+        f.write(icerik)
+
+    firma.logo_url = str(tam_yol)
+    db.commit()
+
+    return {"mesaj": "Logo yuklendi", "logo_url": str(tam_yol)}
+
+
+@router.get("/{firma_id}/logo")
+def firma_logo_getir(
+    firma_id: int,
+    request: Request,
+    t: Optional[str] = None,
+):
+    """Logo dosyasini getir. Token: Authorization header veya ?t=xxx query param."""
+    from app.core.security import token_coz
+    from app.core.database import get_tenant_engine
+    from sqlalchemy.orm import sessionmaker
+    from jose import JWTError
+
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        token_str = auth_header.replace("Bearer ", "")
+    elif t:
+        token_str = t
+    else:
+        raise HTTPException(status_code=401, detail="Token gerekli")
+
+    try:
+        payload = token_coz(token_str)
+        db_name = payload.get("db_name")
+        if not db_name:
+            raise HTTPException(status_code=401, detail="Gecersiz token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Gecersiz token")
+
+    engine = get_tenant_engine(db_name)
+    SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+    sess = SessionLocal()
+
+    try:
+        firma = sess.query(Firma).filter(Firma.id == firma_id).first()
+        if not firma or not firma.logo_url:
+            raise HTTPException(status_code=404, detail="Logo bulunamadi")
+
+        if not os.path.exists(firma.logo_url):
+            raise HTTPException(status_code=404, detail="Dosya sunucuda bulunamadi")
+
+        uzanti = os.path.splitext(firma.logo_url)[1].lower()
+        mime_map = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+                    '.gif': 'image/gif', '.webp': 'image/webp'}
+        media_type = mime_map.get(uzanti, 'image/jpeg')
+
+        return FileResponse(path=firma.logo_url, media_type=media_type)
+    finally:
+        sess.close()
+
+
+@router.delete("/{firma_id}/logo")
+def firma_logo_sil(
+    firma_id: int,
+    kullanici: Kullanici = Depends(mevcut_kullanici_getir),
+    db: Session = Depends(tenant_db_getir),
+):
+    """Firma logosunu sil."""
+    firma = db.query(Firma).filter(Firma.id == firma_id).first()
+    if not firma:
+        raise HTTPException(status_code=404, detail="Firma bulunamadi")
+
+    if firma.logo_url and os.path.exists(firma.logo_url):
+        try:
+            os.remove(firma.logo_url)
+        except OSError:
+            pass
+
+    firma.logo_url = None
+    db.commit()
+
+    return {"mesaj": "Logo silindi"}
 
 
 # =============================================

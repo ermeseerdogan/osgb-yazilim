@@ -211,7 +211,7 @@ def tenant_db_olustur(db_name: str):
         # Tenant tablolarini olustur
         from app.core.database import get_tenant_engine
         from app.models.tenant import (
-            Firma, Isyeri, Bolum, Calisan,
+            Firma, Isyeri, Bolum, Calisan, Personel,
             Egitim, KKDZimmet, Ziyaret,
             CariHesap, Fatura,
         )

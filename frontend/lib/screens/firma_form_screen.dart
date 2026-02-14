@@ -7,7 +7,9 @@
 // OrtakForm saglar: max-width, Ctrl+S, degisiklik uyarisi, butonlar, bilgi satiri
 // Bu dosya sadece firma'ya ozel alanlari tanimlar
 
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'dart:html' as html;
 import '../services/api_service.dart';
 import '../widgets/ortak_form.dart';
 import '../widgets/dokuman_tab.dart';
@@ -27,6 +29,11 @@ class _FirmaFormScreenState extends State<FirmaFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _apiService = ApiService();
   bool _kaydediliyor = false;
+
+  // Logo state
+  bool _logoVar = false;
+  bool _logoYukleniyor = false;
+  String? _logoUrl;
 
   // Form alanlari
   late final TextEditingController _adController;
@@ -54,6 +61,16 @@ class _FirmaFormScreenState extends State<FirmaFormScreen> {
     _vergiDairesiController = TextEditingController(text: f?['vergi_dairesi'] ?? '');
     _vergiNoController = TextEditingController(text: f?['vergi_no'] ?? '');
     _notController = TextEditingController(text: f?['not'] ?? '');
+
+    // Logo durumunu kontrol et
+    if (f != null) {
+      final logoUrl = f['logo_url']?.toString() ?? '';
+      _logoVar = logoUrl.isNotEmpty;
+      if (_logoVar) {
+        final token = ApiService.tokenGetir();
+        _logoUrl = '${_apiService.firmaLogoUrl(f['id'])}?t=$token&_=${DateTime.now().millisecondsSinceEpoch}';
+      }
+    }
   }
 
   @override
@@ -154,10 +171,134 @@ class _FirmaFormScreenState extends State<FirmaFormScreen> {
     }
   }
 
+  // ---- LOGO ISLEMLERI ----
+  Future<void> _logoYukle() async {
+    final uploadInput = html.FileUploadInputElement()..accept = 'image/*';
+    uploadInput.click();
+
+    uploadInput.onChange.listen((event) async {
+      final files = uploadInput.files;
+      if (files == null || files.isEmpty) return;
+
+      final file = files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Dosya boyutu 5 MB\'i gecemez'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+
+      setState(() => _logoYukleniyor = true);
+
+      try {
+        final reader = html.FileReader();
+        reader.readAsArrayBuffer(file);
+        await reader.onLoad.first;
+
+        final bytes = (reader.result as Uint8List).toList();
+        await _apiService.firmaLogoYukle(widget.firma!['id'], bytes, file.name);
+
+        if (mounted) {
+          final token = ApiService.tokenGetir();
+          setState(() {
+            _logoVar = true;
+            _logoUrl = '${_apiService.firmaLogoUrl(widget.firma!['id'])}?t=$token&_=${DateTime.now().millisecondsSinceEpoch}';
+            _logoYukleniyor = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Logo yuklendi'), backgroundColor: Colors.green),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _logoYukleniyor = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Logo yuklenemedi: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    });
+  }
+
+  Future<void> _logoSil() async {
+    setState(() => _logoYukleniyor = true);
+    try {
+      await _apiService.firmaLogoSil(widget.firma!['id']);
+      if (mounted) {
+        setState(() {
+          _logoVar = false;
+          _logoUrl = null;
+          _logoYukleniyor = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Logo kaldirildi'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _logoYukleniyor = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Logo silinemedi: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Widget _logoWidget() {
+    final ad = _adController.text.isNotEmpty ? _adController.text : 'F';
+    final basHarfler = ad.substring(0, ad.length >= 2 ? 2 : 1).toUpperCase();
+
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        _logoYukleniyor
+            ? const CircleAvatar(radius: 45, child: CircularProgressIndicator())
+            : _logoVar && _logoUrl != null
+                ? CircleAvatar(
+                    radius: 45,
+                    backgroundImage: NetworkImage(_logoUrl!),
+                    backgroundColor: Colors.grey[200],
+                  )
+                : CircleAvatar(
+                    radius: 45,
+                    backgroundColor: Colors.blue[100],
+                    child: Text(basHarfler, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blue[800])),
+                  ),
+        const SizedBox(height: 8),
+        if (widget.duzenleModu) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                onPressed: _logoYukleniyor ? null : _logoYukle,
+                icon: Icon(_logoVar ? Icons.edit : Icons.add_a_photo, size: 16),
+                label: Text(_logoVar ? 'Degistir' : 'Logo Yukle', style: const TextStyle(fontSize: 12)),
+              ),
+              if (_logoVar) ...[
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: _logoYukleniyor ? null : _logoSil,
+                  icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                  label: const Text('Kaldir', style: TextStyle(fontSize: 12, color: Colors.red)),
+                ),
+              ],
+            ],
+          ),
+        ],
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
   // 📚 DERS: Form icerigini metod olarak cikariyoruz
   // Tab yapısında ve normal modda ayni icerik kullanılır
   List<Widget> _formIcerigi() {
     return [
+      // ---- LOGO ----
+      _logoWidget(),
+
       // ---- TEMEL BILGILER ----
       const FormBolumBaslik(baslik: 'Temel Bilgiler', ikon: Icons.business),
       const SizedBox(height: 8),

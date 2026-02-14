@@ -1,24 +1,20 @@
 // =============================================
-// FIRMA LISTESI EKRANI
-// Tablo formatinda, kolon secici, filtreleme
+// PERSONEL LISTESI EKRANI
+// OSGB personeli: ISG Uzmani, Isyeri Hekimi, DSP
 // =============================================
 //
-// 📚 DERS: Bu kalip tum liste ekranlarinda kullanilacak
-// 1. Kolon tanimlari (_kolonlar) -> her module ozel
-// 2. Kullanici gorunur kolonlari secer (_gorunurKolonlar)
-// 3. Tablo satirlarinda islem menusu (duzenle/sil/log)
-// 4. Arama + filtreleme
+// Calisan liste ekraninin ayni yapisi, farklar:
+// - Isyeri filtresi yok (personel isyerine bagli degil)
+// - Unvan filtresi var (ISG Uzmani / Isyeri Hekimi / DSP)
+// - Unvan renkli badge olarak gosterilir
 
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import '../services/api_service.dart';
-import 'firma_form_screen.dart';
+import 'personel_form_screen.dart';
 
-// 📚 DERS: Kolon tanimi
-// Her kolon icin: anahtar (API'deki alan adi), baslik (gosterilecek isim),
-// varsayilan gorunum, genislik
 class KolonTanimi {
   final String anahtar;
   final String baslik;
@@ -33,97 +29,83 @@ class KolonTanimi {
   });
 }
 
-class FirmaListScreen extends StatefulWidget {
-  const FirmaListScreen({super.key});
+class PersonelListScreen extends StatefulWidget {
+  const PersonelListScreen({super.key});
 
   @override
-  State<FirmaListScreen> createState() => _FirmaListScreenState();
+  State<PersonelListScreen> createState() => _PersonelListScreenState();
 }
 
-class _FirmaListScreenState extends State<FirmaListScreen> {
+class _PersonelListScreenState extends State<PersonelListScreen> {
   final _apiService = ApiService();
 
-  // ---- KOLON TANIMLARI ----
-  // 📚 DERS: Tum kolonlar burada tanimlanir
-  // varsayilanGorunum: true -> sayfa acildiginda gorunur
-  // Kullanici isterse diger kolonlari da acabilir
   static const List<KolonTanimi> _kolonlar = [
-    KolonTanimi(anahtar: 'ad', baslik: 'Firma Adi', varsayilanGorunum: true, genislik: 200),
-    KolonTanimi(anahtar: 'kisa_ad', baslik: 'Kisa Ad', genislik: 100),
-    KolonTanimi(anahtar: 'il', baslik: 'Il', varsayilanGorunum: true, genislik: 100),
-    KolonTanimi(anahtar: 'ilce', baslik: 'Ilce', varsayilanGorunum: true, genislik: 100),
-    KolonTanimi(anahtar: 'email', baslik: 'Email', genislik: 180),
+    KolonTanimi(anahtar: 'ad', baslik: 'Ad', varsayilanGorunum: true, genislik: 130),
+    KolonTanimi(anahtar: 'soyad', baslik: 'Soyad', varsayilanGorunum: true, genislik: 130),
+    KolonTanimi(anahtar: 'unvan_turkce', baslik: 'Unvan', varsayilanGorunum: true, genislik: 150),
     KolonTanimi(anahtar: 'telefon', baslik: 'Telefon', varsayilanGorunum: true, genislik: 130),
-    KolonTanimi(anahtar: 'adres', baslik: 'Adres', genislik: 200),
-    KolonTanimi(anahtar: 'vergi_dairesi', baslik: 'Vergi Dairesi', genislik: 130),
-    KolonTanimi(anahtar: 'vergi_no', baslik: 'Vergi No', genislik: 120),
+    KolonTanimi(anahtar: 'email', baslik: 'Email', genislik: 180),
+    KolonTanimi(anahtar: 'tc_no', baslik: 'TC No', genislik: 130),
+    KolonTanimi(anahtar: 'uzmanlik_sinifi', baslik: 'Uzmanlik Sinifi', genislik: 140),
+    KolonTanimi(anahtar: 'brans', baslik: 'Brans', genislik: 150),
+    KolonTanimi(anahtar: 'uzmanlik_belgesi_no', baslik: 'Belge No', genislik: 130),
+    KolonTanimi(anahtar: 'ise_baslama_tarihi', baslik: 'Ise Baslama', genislik: 120),
   ];
 
-  // Durum degiskenleri
-  List<dynamic> _firmalar = [];
+  List<dynamic> _personeller = [];
   int _toplam = 0;
   bool _yukleniyor = true;
   String? _hata;
   String _aramaMetni = '';
 
-  // 📚 DERS: Kullanicinin sectigi gorunur kolonlar (Set = benzersiz degerler)
   late Set<String> _gorunurKolonlar;
-
-  // 📚 DERS: Kolon bazli filtreler (Excel tarzi)
-  // Anahtar: kolon adi, Deger: secilen filtre degerleri
-  // Ornek: {'il': {'Istanbul', 'Ankara'}} -> sadece bu illerdeki firmalar gosterilir
   final Map<String, Set<String>> _kolonFiltreleri = {};
-
-  // 📚 DERS: Gruplama (Group By)
-  // Hangi kolona gore gruplanacak? null = gruplama yok
-  // Ornek: 'il' -> Istanbul (3), Ankara (2) seklinde gruplar
   String? _grupKolonu;
-  // Hangi gruplar acik (expanded)? Varsayilan: hepsi acik
   final Set<String> _acikGruplar = {};
 
-  // Filtrelenmis firmalar (kolon filtreleri uygulanmis)
-  List<dynamic> get _filtreliFirmalar {
-    if (_kolonFiltreleri.isEmpty) return _firmalar;
-    return _firmalar.where((firma) {
+  // Unvan filtresi
+  String? _seciliUnvan;
+
+  List<dynamic> get _filtreliPersoneller {
+    if (_kolonFiltreleri.isEmpty) return _personeller;
+    return _personeller.where((p) {
       for (final entry in _kolonFiltreleri.entries) {
         final kolonAdi = entry.key;
         final seciliDegerler = entry.value;
         if (seciliDegerler.isEmpty) continue;
-        final deger = firma[kolonAdi]?.toString() ?? '';
+        final deger = p[kolonAdi]?.toString() ?? '';
         if (!seciliDegerler.contains(deger)) return false;
       }
       return true;
     }).toList();
   }
 
-  // Arama kontrolcusu
   final _aramaController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // Varsayilan gorunur kolonlari ayarla
     _gorunurKolonlar = _kolonlar
         .where((k) => k.varsayilanGorunum)
         .map((k) => k.anahtar)
         .toSet();
-    _firmalariYukle();
+    _personelleriYukle();
   }
 
-  // API'den firmalari yukle
-  Future<void> _firmalariYukle() async {
+  Future<void> _personelleriYukle() async {
     setState(() {
       _yukleniyor = true;
       _hata = null;
     });
 
     try {
-      final sonuc = await _apiService.firmaListele(
+      final sonuc = await _apiService.personelListele(
         arama: _aramaMetni.isNotEmpty ? _aramaMetni : null,
+        unvan: _seciliUnvan,
       );
 
       setState(() {
-        _firmalar = sonuc['firmalar'] as List<dynamic>;
+        _personeller = sonuc['personeller'] as List<dynamic>;
         _toplam = sonuc['toplam'] as int;
         _yukleniyor = false;
       });
@@ -141,11 +123,69 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
     super.dispose();
   }
 
+  // Personel avatar (profil foto veya basharfler)
+  Widget _personelAvatar(dynamic personel, {double radius = 16}) {
+    final ad = personel['ad']?.toString() ?? '';
+    final soyad = personel['soyad']?.toString() ?? '';
+    final basHarfler = '${ad.isNotEmpty ? ad[0] : ''}${soyad.isNotEmpty ? soyad[0] : ''}'.toUpperCase();
+    final fotoUrl = personel['profil_foto_url']?.toString() ?? '';
+
+    if (fotoUrl.isNotEmpty) {
+      final token = ApiService.tokenGetir();
+      final url = '${_apiService.personelProfilFotoUrl(personel['id'])}?t=$token';
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: NetworkImage(url),
+        onBackgroundImageError: (_, __) {},
+        child: null,
+      );
+    }
+
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.blue[100],
+      child: Text(basHarfler, style: TextStyle(fontSize: radius * 0.7, fontWeight: FontWeight.bold, color: Colors.blue[800])),
+    );
+  }
+
+  // Unvan badge renkleri
+  Widget _unvanBadge(String deger) {
+    Color renk;
+    if (deger.contains('ISG')) {
+      renk = Colors.blue;
+    } else if (deger.contains('Hekim')) {
+      renk = Colors.green;
+    } else if (deger.contains('DSP')) {
+      renk = Colors.orange;
+    } else {
+      renk = Colors.grey;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: renk.withAlpha(25),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: renk.withAlpha(80)),
+      ),
+      child: Text(deger, style: TextStyle(fontSize: 11, color: renk, fontWeight: FontWeight.w600)),
+    );
+  }
+
+  String _tarihFormatla(String? tarih) {
+    if (tarih == null || tarih.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(tarih);
+      return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
+    } catch (_) {
+      return tarih;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Firmalar ($_toplam)'),
+        title: Text('Personel ($_toplam)'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         actions: [
@@ -163,18 +203,16 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                   _acikGruplar.clear();
                 } else {
                   _grupKolonu = value;
-                  // Yeni gruplama yapildiginda tum gruplari ac
                   _acikGruplar.clear();
                   final degerler = <String>{};
-                  for (final f in _filtreliFirmalar) {
-                    degerler.add(f[value]?.toString() ?? '(Bos)');
+                  for (final p in _filtreliPersoneller) {
+                    degerler.add(p[value]?.toString() ?? '(Bos)');
                   }
                   _acikGruplar.addAll(degerler);
                 }
               });
             },
             itemBuilder: (context) => [
-              // Gruplama kaldir secenegi
               if (_grupKolonu != null)
                 PopupMenuItem(
                   value: 'kaldir',
@@ -187,7 +225,6 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                   ),
                 ),
               if (_grupKolonu != null) const PopupMenuDivider(),
-              // Gorunur kolonlardan gruplama secenekleri
               ..._kolonlar
                   .where((k) => _gorunurKolonlar.contains(k.anahtar))
                   .map((k) => PopupMenuItem(
@@ -206,13 +243,13 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                       )),
             ],
           ),
-          // Kolon secici butonu
+          // Kolon secici
           IconButton(
             icon: const Icon(Icons.view_column),
             tooltip: 'Kolonlari Sec',
             onPressed: _kolonSeciciGoster,
           ),
-          // Excel islemleri menusu
+          // Excel islemleri
           PopupMenuButton<String>(
             icon: const Icon(Icons.table_chart),
             tooltip: 'Excel Islemleri',
@@ -257,37 +294,37 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
         ],
       ),
 
-      // ---- YENI FIRMA EKLEME BUTONU ----
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final eklendi = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
-              builder: (_) => const FirmaFormScreen(),
+              builder: (_) => const PersonelFormScreen(),
             ),
           );
-          if (eklendi == true) _firmalariYukle();
+          if (eklendi == true) _personelleriYukle();
         },
         icon: const Icon(Icons.add),
-        label: const Text('Yeni Firma'),
+        label: const Text('Yeni Personel'),
       ),
 
       body: Column(
         children: [
-          // ---- ARAMA + FILTRE SATIRI ----
+          // Arama + Unvan filtresi + yenile
           Container(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
             child: Row(
               children: [
-                // Arama alani
+                // Arama kutusu
                 Expanded(
+                  flex: 3,
                   child: SizedBox(
                     height: 38,
                     child: TextField(
                       controller: _aramaController,
                       style: const TextStyle(fontSize: 13),
                       decoration: InputDecoration(
-                        hintText: 'Firma ara...',
+                        hintText: 'Personel ara (ad, soyad, TC)...',
                         hintStyle: const TextStyle(fontSize: 13),
                         prefixIcon: const Icon(Icons.search, size: 20),
                         contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
@@ -301,7 +338,7 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                                 onPressed: () {
                                   _aramaController.clear();
                                   setState(() => _aramaMetni = '');
-                                  _firmalariYukle();
+                                  _personelleriYukle();
                                 },
                               )
                             : null,
@@ -309,16 +346,61 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                       onChanged: (value) {
                         setState(() => _aramaMetni = value);
                       },
-                      onSubmitted: (_) => _firmalariYukle(),
+                      onSubmitted: (_) => _personelleriYukle(),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Yenile butonu
+                // Unvan filtresi dropdown
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 38,
+                    child: DropdownButtonFormField<String?>(
+                      value: _seciliUnvan,
+                      isExpanded: true,
+                      isDense: true,
+                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                      decoration: InputDecoration(
+                        hintText: 'Tum Unvanlar',
+                        hintStyle: const TextStyle(fontSize: 12),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        prefixIcon: const Icon(Icons.badge_outlined, size: 18),
+                      ),
+                      items: const [
+                        DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Tum Unvanlar', style: TextStyle(fontSize: 13)),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'isg_uzmani',
+                          child: Text('ISG Uzmani', style: TextStyle(fontSize: 13)),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'isyeri_hekimi',
+                          child: Text('Isyeri Hekimi', style: TextStyle(fontSize: 13)),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'dsp',
+                          child: Text('DSP', style: TextStyle(fontSize: 13)),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() => _seciliUnvan = value);
+                        _personelleriYukle();
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 SizedBox(
                   height: 38,
                   child: OutlinedButton.icon(
-                    onPressed: _firmalariYukle,
+                    onPressed: _personelleriYukle,
                     icon: const Icon(Icons.refresh, size: 18),
                     label: const Text('Yenile', style: TextStyle(fontSize: 12)),
                     style: OutlinedButton.styleFrom(
@@ -330,15 +412,15 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
             ),
           ),
 
-          // ---- ICERIK ----
+          // Icerik
           Expanded(
             child: _yukleniyor
                 ? const Center(child: CircularProgressIndicator())
                 : _hata != null
                     ? _hataWidget()
-                    : _firmalar.isEmpty
+                    : _personeller.isEmpty
                         ? _bosListeWidget()
-                        : _firmaTablosu(),
+                        : _personelTablosu(),
           ),
         ],
       ),
@@ -347,14 +429,11 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
 
   // =============================================
   // KOLON SECICI DIALOG
-  // 📚 DERS: Kullanici hangi kolonlari gormek istedigini secer
-  // CheckboxListTile ile her kolon icin acma/kapama
   // =============================================
   void _kolonSeciciGoster() {
     showDialog(
       context: context,
       builder: (ctx) {
-        // Gecici kopya olustur (iptal edilirse eski haline donmesi icin)
         final geciciSecim = Set<String>.from(_gorunurKolonlar);
 
         return StatefulBuilder(
@@ -372,7 +451,6 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Tumunu sec / Tumunu kaldir
                     Row(
                       children: [
                         TextButton(
@@ -386,7 +464,6 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                         TextButton(
                           onPressed: () {
                             setDialogState(() {
-                              // En az 1 kolon kalmali
                               geciciSecim.clear();
                               geciciSecim.add('ad');
                             });
@@ -396,7 +473,6 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                       ],
                     ),
                     const Divider(height: 1),
-                    // Kolon listesi
                     ..._kolonlar.map((kolon) {
                       return CheckboxListTile(
                         title: Text(kolon.baslik, style: const TextStyle(fontSize: 14)),
@@ -408,7 +484,6 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                             if (val == true) {
                               geciciSecim.add(kolon.anahtar);
                             } else {
-                              // En az 1 kolon kalmali
                               if (geciciSecim.length > 1) {
                                 geciciSecim.remove(kolon.anahtar);
                               }
@@ -443,17 +518,14 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
   }
 
   // =============================================
-  // FIRMA TABLOSU
-  // 📚 DERS: Elle tablo - ekrana tam sigar, yatay kaydirma yok
-  // Gruplama aktifse: grup basliklari + acilir/kapanir satirlar
-  // Gruplama yoksa: duz liste
+  // PERSONEL TABLOSU
   // =============================================
-  Widget _firmaTablosu() {
+  Widget _personelTablosu() {
     final aktifKolonlar = _kolonlar
         .where((k) => _gorunurKolonlar.contains(k.anahtar))
         .toList();
 
-    final gosterilecekFirmalar = _filtreliFirmalar;
+    final gosterilecek = _filtreliPersoneller;
 
     return Column(
       children: [
@@ -468,7 +540,7 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                 const SizedBox(width: 4),
                 if (_kolonFiltreleri.isNotEmpty)
                   Text(
-                    'Filtre: ${gosterilecekFirmalar.length}/${_firmalar.length}',
+                    'Filtre: ${gosterilecek.length}/${_personeller.length}',
                     style: TextStyle(fontSize: 11, color: Colors.blue[700]),
                   ),
                 if (_kolonFiltreleri.isNotEmpty && _grupKolonu != null)
@@ -510,7 +582,7 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
               ],
             ),
           ),
-        // Baslik satiri (her zaman gosterilir)
+        // Baslik satiri
         Container(
           decoration: BoxDecoration(
             color: Colors.grey[100],
@@ -519,7 +591,10 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(
             children: [
-              const SizedBox(width: 40),
+              const SizedBox(
+                width: 40,
+                child: Text('', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              ),
               ...aktifKolonlar.map((k) => Expanded(
                     child: _filtreliKolonBaslik(k),
                   )),
@@ -530,50 +605,43 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
         // Tablo icerigi
         Expanded(
           child: _grupKolonu != null
-              ? _grupluTablo(aktifKolonlar, gosterilecekFirmalar)
-              : _duzTablo(aktifKolonlar, gosterilecekFirmalar),
+              ? _grupluTablo(aktifKolonlar, gosterilecek)
+              : _duzTablo(aktifKolonlar, gosterilecek),
         ),
       ],
     );
   }
 
-  // 📚 DERS: Gruplama olmadan duz tablo
-  Widget _duzTablo(List<KolonTanimi> aktifKolonlar, List<dynamic> firmalar) {
+  Widget _duzTablo(List<KolonTanimi> aktifKolonlar, List<dynamic> personeller) {
     return ListView.builder(
-      itemCount: firmalar.length,
+      itemCount: personeller.length,
       itemBuilder: (context, index) {
-        return _firmaSatiri(aktifKolonlar, firmalar[index], index + 1);
+        return _personelSatiri(aktifKolonlar, personeller[index], index + 1);
       },
     );
   }
 
   // =============================================
   // GRUPLU TABLO
-  // 📚 DERS: Secilen kolona gore firmalari grupla
-  // Her grup acilir/kapanir (expand/collapse)
-  // Grup basliginda: deger + kayit sayisi
   // =============================================
-  Widget _grupluTablo(List<KolonTanimi> aktifKolonlar, List<dynamic> firmalar) {
-    // Firmalari gruplara ayir
+  Widget _grupluTablo(List<KolonTanimi> aktifKolonlar, List<dynamic> personeller) {
     final gruplar = <String, List<dynamic>>{};
-    for (final firma in firmalar) {
-      final deger = firma[_grupKolonu]?.toString() ?? '';
+    for (final p in personeller) {
+      final deger = p[_grupKolonu]?.toString() ?? '';
       final grupAdi = deger.isEmpty ? '(Bos)' : deger;
-      gruplar.putIfAbsent(grupAdi, () => []).add(firma);
+      gruplar.putIfAbsent(grupAdi, () => []).add(p);
     }
 
-    // Grup isimlerini sirala
     final grupIsimleri = gruplar.keys.toList()..sort();
 
-    // Flat list olustur: grup basliklari + satirlar
     final satirlar = <_TabloSatir>[];
     int siraNo = 1;
     for (final grupAdi in grupIsimleri) {
-      final grupFirmalari = gruplar[grupAdi]!;
-      satirlar.add(_TabloSatir(tip: _SatirTip.grupBaslik, grupAdi: grupAdi, grupSayisi: grupFirmalari.length));
+      final grupPersonelleri = gruplar[grupAdi]!;
+      satirlar.add(_TabloSatir(tip: _SatirTip.grupBaslik, grupAdi: grupAdi, grupSayisi: grupPersonelleri.length));
       if (_acikGruplar.contains(grupAdi)) {
-        for (final firma in grupFirmalari) {
-          satirlar.add(_TabloSatir(tip: _SatirTip.veri, firma: firma, siraNo: siraNo++));
+        for (final p in grupPersonelleri) {
+          satirlar.add(_TabloSatir(tip: _SatirTip.veri, personel: p, siraNo: siraNo++));
         }
       }
     }
@@ -585,12 +653,11 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
         if (satir.tip == _SatirTip.grupBaslik) {
           return _grupBaslikSatiri(satir.grupAdi!, satir.grupSayisi!);
         }
-        return _firmaSatiri(aktifKolonlar, satir.firma!, satir.siraNo!);
+        return _personelSatiri(aktifKolonlar, satir.personel!, satir.siraNo!);
       },
     );
   }
 
-  // Grup baslik satiri
   Widget _grupBaslikSatiri(String grupAdi, int sayi) {
     final acik = _acikGruplar.contains(grupAdi);
     return InkWell(
@@ -643,28 +710,10 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
     );
   }
 
-  // Firma logo avatar
-  Widget _firmaAvatar(dynamic firma) {
-    final ad = firma['ad']?.toString() ?? '';
-    final basHarfler = ad.isNotEmpty ? ad.substring(0, ad.length >= 2 ? 2 : 1).toUpperCase() : 'F';
-    final logoUrl = firma['logo_url']?.toString() ?? '';
-
-    if (logoUrl.isNotEmpty) {
-      final token = ApiService.tokenGetir();
-      final url = '${_apiService.firmaLogoUrl(firma['id'])}?t=$token';
-      return CircleAvatar(radius: 16, backgroundImage: NetworkImage(url), backgroundColor: Colors.grey[200]);
-    }
-    return CircleAvatar(
-      radius: 16,
-      backgroundColor: Colors.blue[100],
-      child: Text(basHarfler, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue[800])),
-    );
-  }
-
-  // Tek firma satiri (hem duz hem gruplu tabloda kullanilir)
-  Widget _firmaSatiri(List<KolonTanimi> aktifKolonlar, dynamic firma, int siraNo) {
+  // Tek personel satiri
+  Widget _personelSatiri(List<KolonTanimi> aktifKolonlar, dynamic personel, int siraNo) {
     return InkWell(
-      onTap: () => _firmaDuzenle(firma),
+      onTap: () => _personelDuzenle(personel),
       child: Container(
         decoration: BoxDecoration(
           color: siraNo.isOdd ? Colors.white : Colors.grey[50],
@@ -673,12 +722,38 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Row(
           children: [
-            SizedBox(
-              width: 40,
-              child: _firmaAvatar(firma),
+            // Profil fotografi veya basharfler
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _personelAvatar(personel, radius: 16),
             ),
             ...aktifKolonlar.map((k) {
-              final deger = firma[k.anahtar]?.toString() ?? '';
+              final deger = personel[k.anahtar]?.toString() ?? '';
+
+              // Unvan ozel gosterim (badge)
+              if (k.anahtar == 'unvan_turkce' && deger.isNotEmpty) {
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _unvanBadge(deger),
+                  ),
+                );
+              }
+
+              // Tarih alanlari formatlama
+              if (k.anahtar == 'ise_baslama_tarihi' && deger.isNotEmpty) {
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Text(
+                      _tarihFormatla(deger),
+                      style: const TextStyle(fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                );
+              }
+
               return Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(right: 8),
@@ -686,7 +761,9 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                     deger,
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: k.anahtar == 'ad' ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: (k.anahtar == 'ad' || k.anahtar == 'soyad')
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                       color: k.anahtar == 'ad' ? Colors.blue[800] : Colors.black87,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -701,11 +778,11 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                 iconSize: 20,
                 onSelected: (value) async {
                   if (value == 'duzenle') {
-                    _firmaDuzenle(firma);
+                    _personelDuzenle(personel);
                   } else if (value == 'sil') {
-                    _firmaSilOnay(firma);
+                    _personelSilOnay(personel);
                   } else if (value == 'log') {
-                    _kayitLogGoster(firma['id'], firma['ad']);
+                    _kayitLogGoster(personel['id'], '${personel['ad']} ${personel['soyad']}');
                   }
                 },
                 itemBuilder: (context) => [
@@ -749,9 +826,7 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
   }
 
   // =============================================
-  // KOLON BAZLI FILTRE BASLIK WIDGET
-  // 📚 DERS: Excel tarzi - kolon basligina tikla, benzersiz degerler goster
-  // Kullanici istedigini sec, sadece o degerler gosterilsin
+  // KOLON BAZLI FILTRE
   // =============================================
   Widget _filtreliKolonBaslik(KolonTanimi kolon) {
     final aktifFiltre = _kolonFiltreleri.containsKey(kolon.anahtar) &&
@@ -787,25 +862,16 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
     );
   }
 
-  // 📚 DERS: Kolon filtre dialog
-  // Tum benzersiz degerleri listele, checkbox ile secim yap
   void _kolonFiltreDialogGoster(KolonTanimi kolon) {
-    // Bu kolondaki tum benzersiz degerleri topla
     final tumDegerler = <String>{};
-    for (final firma in _firmalar) {
-      final deger = firma[kolon.anahtar]?.toString() ?? '';
+    for (final p in _personeller) {
+      final deger = p[kolon.anahtar]?.toString() ?? '';
       if (deger.isNotEmpty) tumDegerler.add(deger);
     }
-
-    // Sirala
     final siraliDegerler = tumDegerler.toList()..sort();
-
-    // Mevcut secili filtreleri kopyala
     final geciciSecim = Set<String>.from(
       _kolonFiltreleri[kolon.anahtar] ?? <String>{},
     );
-
-    // Filtre icinde arama
     String filtreArama = '';
 
     showDialog(
@@ -813,7 +879,6 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            // Arama ile filtrele
             final gosterilecek = filtreArama.isEmpty
                 ? siraliDegerler
                 : siraliDegerler
@@ -834,7 +899,6 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Filtre icinde arama
                     if (siraliDegerler.length > 5)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
@@ -856,7 +920,6 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                           ),
                         ),
                       ),
-                    // Tumunu sec / Tumunu kaldir
                     Row(
                       children: [
                         TextButton(
@@ -874,7 +937,6 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                       ],
                     ),
                     const Divider(height: 1),
-                    // Deger listesi
                     Expanded(
                       child: gosterilecek.isEmpty
                           ? const Center(child: Text('Deger bulunamadi', style: TextStyle(fontSize: 12)))
@@ -882,9 +944,8 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
                               itemCount: gosterilecek.length,
                               itemBuilder: (ctx, i) {
                                 final deger = gosterilecek[i];
-                                // Bu degerdeki kayit sayisi
-                                final sayi = _firmalar.where((f) =>
-                                    (f[kolon.anahtar]?.toString() ?? '') == deger).length;
+                                final sayi = _personeller.where((p) =>
+                                    (p[kolon.anahtar]?.toString() ?? '') == deger).length;
                                 return CheckboxListTile(
                                   title: Row(
                                     children: [
@@ -940,35 +1001,35 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
     );
   }
 
-  // Firma duzenleme ekranina git
-  Future<void> _firmaDuzenle(Map<String, dynamic> firma) async {
+  // Personel duzenleme
+  Future<void> _personelDuzenle(Map<String, dynamic> personel) async {
     final guncellendi = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => FirmaFormScreen(firma: firma),
+        builder: (_) => PersonelFormScreen(personel: personel),
       ),
     );
-    if (guncellendi == true) _firmalariYukle();
+    if (guncellendi == true) _personelleriYukle();
   }
 
-  // Bos liste mesaji
+  // Bos liste
   Widget _bosListeWidget() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.business_outlined, size: 64, color: Colors.grey[400]),
+          Icon(Icons.badge_outlined, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             _aramaMetni.isNotEmpty
                 ? '"$_aramaMetni" icin sonuc bulunamadi'
-                : 'Henuz firma eklenmemis',
+                : 'Henuz personel eklenmemis',
             style: TextStyle(color: Colors.grey[600], fontSize: 16),
           ),
           const SizedBox(height: 8),
           if (_aramaMetni.isEmpty)
             Text(
-              'Sag alttaki + butonuyla yeni firma ekleyin',
+              'Sag alttaki + butonuyla yeni personel ekleyin',
               style: TextStyle(color: Colors.grey[400], fontSize: 14),
             ),
         ],
@@ -976,7 +1037,7 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
     );
   }
 
-  // Hata mesaji
+  // Hata
   Widget _hataWidget() {
     return Center(
       child: Column(
@@ -987,7 +1048,7 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
           Text(_hata!, style: TextStyle(color: Colors.red[600])),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _firmalariYukle,
+            onPressed: _personelleriYukle,
             child: const Text('Tekrar Dene'),
           ),
         ],
@@ -1004,14 +1065,15 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Excel hazirlaniyor...')),
       );
-      final bytes = await _apiService.firmaExcelExport(
+      final bytes = await _apiService.personelExcelExport(
         arama: _aramaMetni.isNotEmpty ? _aramaMetni : null,
+        unvan: _seciliUnvan,
       );
       final blob = html.Blob([Uint8List.fromList(bytes)],
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       final url = html.Url.createObjectUrlFromBlob(blob);
       html.AnchorElement(href: url)
-        ..setAttribute('download', 'firmalar.xlsx')
+        ..setAttribute('download', 'personel.xlsx')
         ..click();
       html.Url.revokeObjectUrl(url);
       if (mounted) {
@@ -1030,12 +1092,12 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
 
   Future<void> _excelSablonIndir() async {
     try {
-      final bytes = await _apiService.firmaExcelSablon();
+      final bytes = await _apiService.personelExcelSablon();
       final blob = html.Blob([Uint8List.fromList(bytes)],
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       final url = html.Url.createObjectUrlFromBlob(blob);
       html.AnchorElement(href: url)
-        ..setAttribute('download', 'firma_sablon.xlsx')
+        ..setAttribute('download', 'personel_sablon.xlsx')
         ..click();
       html.Url.revokeObjectUrl(url);
       if (mounted) {
@@ -1052,6 +1114,7 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
     }
   }
 
+  // Personel import - isyeri secimi gereksiz (personel isyerine bagli degil)
   Future<void> _excelImport() async {
     try {
       final uploadInput = html.FileUploadInputElement();
@@ -1072,10 +1135,10 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
       reader.readAsArrayBuffer(file);
       await reader.onLoad.first;
       final bytes = (reader.result as Uint8List).toList();
-      final sonuc = await _apiService.firmaExcelImport(bytes, file.name);
+      final sonuc = await _apiService.personelExcelImport(bytes, file.name);
       if (mounted) {
         _excelImportSonuc(sonuc);
-        _firmalariYukle();
+        _personelleriYukle();
       }
     } catch (e) {
       if (mounted) {
@@ -1173,20 +1236,20 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
         return _KayitLogDialog(
           kayitId: kayitId,
           kayitAd: kayitAd,
-          kayitTuru: 'Firma',
+          kayitTuru: 'Personel',
           apiService: _apiService,
         );
       },
     );
   }
 
-  // Firma silme onay dialog'u
-  void _firmaSilOnay(Map<String, dynamic> firma) {
+  // Personel silme onay
+  void _personelSilOnay(Map<String, dynamic> personel) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Firma Sil'),
-        content: Text("'${firma['ad']}' firmasini silmek istiyor musunuz?"),
+        title: const Text('Personel Sil'),
+        content: Text("'${personel['ad']} ${personel['soyad']}' personelini silmek istiyor musunuz?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -1197,11 +1260,11 @@ class _FirmaListScreenState extends State<FirmaListScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await _apiService.firmaSil(firma['id']);
-                _firmalariYukle();
+                await _apiService.personelSil(personel['id']);
+                _personelleriYukle();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("'${firma['ad']}' silindi")),
+                    SnackBar(content: Text("'${personel['ad']} ${personel['soyad']}' silindi")),
                   );
                 }
               } catch (e) {
@@ -1435,7 +1498,7 @@ class _KayitLogDialogState extends State<_KayitLogDialog> {
                 TextSpan(text: '$alan: ', style: const TextStyle(fontWeight: FontWeight.w600)),
                 TextSpan(text: '${eski[alan] ?? '-'}',
                     style: TextStyle(color: Colors.red[600], decoration: TextDecoration.lineThrough)),
-                const TextSpan(text: ' → '),
+                const TextSpan(text: ' \u2192 '),
                 TextSpan(text: '${yeni[alan] ?? '-'}',
                     style: TextStyle(color: Colors.green[700], fontWeight: FontWeight.w600)),
               ],
@@ -1459,23 +1522,20 @@ class _KayitLogDialogState extends State<_KayitLogDialog> {
 // =============================================
 // YARDIMCI SINIFLAR
 // =============================================
-
-// 📚 DERS: Gruplu tabloda satir tipleri
-// Flat ListView icinde hem grup basliklari hem veri satirlari gostermek icin
 enum _SatirTip { grupBaslik, veri }
 
 class _TabloSatir {
   final _SatirTip tip;
   final String? grupAdi;
   final int? grupSayisi;
-  final dynamic firma;
+  final dynamic personel;
   final int? siraNo;
 
   const _TabloSatir({
     required this.tip,
     this.grupAdi,
     this.grupSayisi,
-    this.firma,
+    this.personel,
     this.siraNo,
   });
 }

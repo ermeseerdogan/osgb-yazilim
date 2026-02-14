@@ -289,6 +289,33 @@ class ApiService {
     }
   }
 
+  // Firma logo yukle
+  Future<Map<String, dynamic>> firmaLogoYukle(int id, List<int> bytes, String dosyaAdi) async {
+    try {
+      final formData = FormData.fromMap({
+        'logo': MultipartFile.fromBytes(bytes, filename: dosyaAdi),
+      });
+      final response = await _dio.post('/firma/$id/logo', data: formData);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Firma logo sil
+  Future<void> firmaLogoSil(int id) async {
+    try {
+      await _dio.delete('/firma/$id/logo');
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Firma logo URL'i
+  String firmaLogoUrl(int id) {
+    return 'http://62.171.185.38:8001/api/v1/firma/$id/logo';
+  }
+
   // =============================================
   // EXCEL ISLEMLERI
   // 📚 DERS: Excel export/import/sablon islemleri
@@ -451,6 +478,33 @@ class ApiService {
     }
   }
 
+  // Isyeri logo yukle
+  Future<Map<String, dynamic>> isyeriLogoYukle(int id, List<int> bytes, String dosyaAdi) async {
+    try {
+      final formData = FormData.fromMap({
+        'logo': MultipartFile.fromBytes(bytes, filename: dosyaAdi),
+      });
+      final response = await _dio.post('/isyeri/$id/logo', data: formData);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Isyeri logo sil
+  Future<void> isyeriLogoSil(int id) async {
+    try {
+      await _dio.delete('/isyeri/$id/logo');
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Isyeri logo URL'i
+  String isyeriLogoUrl(int id) {
+    return 'http://62.171.185.38:8001/api/v1/isyeri/$id/logo';
+  }
+
   // Isyeri Excel export
   Future<List<int>> isyeriExcelExport({String? arama, int? firmaId}) async {
     try {
@@ -581,6 +635,33 @@ class ApiService {
     }
   }
 
+  // Calisan profil foto yukle
+  Future<Map<String, dynamic>> calisanProfilFotoYukle(int id, List<int> bytes, String dosyaAdi) async {
+    try {
+      final formData = FormData.fromMap({
+        'foto': MultipartFile.fromBytes(bytes, filename: dosyaAdi),
+      });
+      final response = await _dio.post('/calisan/$id/profil-foto', data: formData);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Calisan profil foto sil
+  Future<void> calisanProfilFotoSil(int id) async {
+    try {
+      await _dio.delete('/calisan/$id/profil-foto');
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Calisan profil foto URL'i
+  String calisanProfilFotoUrl(int id) {
+    return 'http://62.171.185.38:8001/api/v1/calisan/$id/profil-foto';
+  }
+
   // Calisan Excel export
   Future<List<int>> calisanExcelExport({String? arama, int? isyeriId}) async {
     try {
@@ -650,6 +731,127 @@ class ApiService {
     } on DioException catch (e) {
       throw Exception(_kullaniciDostuHata(e));
     }
+  }
+
+  // =============================================
+  // PERSONEL ISLEMLERI
+  // 📚 DERS: OSGB personeli (ISG Uzmani, Isyeri Hekimi, DSP)
+  // =============================================
+
+  Future<Map<String, dynamic>> personelListele({
+    int sayfa = 1,
+    int adet = 20,
+    String? arama,
+    String? unvan,
+    bool? aktif,
+  }) async {
+    try {
+      final params = <String, dynamic>{'sayfa': sayfa, 'adet': adet};
+      if (arama != null && arama.isNotEmpty) params['arama'] = arama;
+      if (unvan != null) params['unvan'] = unvan;
+      if (aktif != null) params['aktif'] = aktif;
+      final response = await _dio.get('/personel', queryParameters: params);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> personelEkle(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.post('/personel', data: data);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> personelGuncelle(int id, Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.put('/personel/$id', data: data);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  Future<void> personelSil(int id) async {
+    try {
+      await _dio.delete('/personel/$id');
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  Future<List<int>> personelExcelExport({String? arama, String? unvan}) async {
+    try {
+      final params = <String, dynamic>{};
+      if (arama != null && arama.isNotEmpty) params['arama'] = arama;
+      if (unvan != null) params['unvan'] = unvan;
+      final response = await _dio.get(
+        '/personel/excel/export',
+        queryParameters: params,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data as List<int>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  Future<List<int>> personelExcelSablon() async {
+    try {
+      final response = await _dio.get(
+        '/personel/excel/sablon',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data as List<int>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  Future<Map<String, dynamic>> personelExcelImport(
+    List<int> dosyaBytes,
+    String dosyaAdi,
+  ) async {
+    try {
+      final formData = FormData.fromMap({
+        'dosya': MultipartFile.fromBytes(dosyaBytes, filename: dosyaAdi),
+      });
+      final response = await _dio.post('/personel/excel/import', data: formData);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // =============================================
+  // PERSONEL PROFIL FOTOGRAFI
+  // =============================================
+
+  Future<Map<String, dynamic>> personelProfilFotoYukle(int id, List<int> bytes, String dosyaAdi) async {
+    try {
+      final formData = FormData.fromMap({
+        'foto': MultipartFile.fromBytes(bytes, filename: dosyaAdi),
+      });
+      final response = await _dio.post('/personel/$id/profil-foto', data: formData);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  Future<void> personelProfilFotoSil(int id) async {
+    try {
+      await _dio.delete('/personel/$id/profil-foto');
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  String personelProfilFotoUrl(int id) {
+    return 'http://62.171.185.38:8001/api/v1/personel/$id/profil-foto';
   }
 
   // =============================================

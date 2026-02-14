@@ -14,6 +14,7 @@ import 'login_screen.dart';
 import 'firma_list_screen.dart';
 import 'isyeri_list_screen.dart';
 import 'calisan_list_screen.dart';
+import 'personel_list_screen.dart';
 import 'log_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -164,6 +165,17 @@ class DashboardScreen extends StatelessWidget {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.badge),
+              title: const Text('Personel'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PersonelListScreen()),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.calendar_today),
               title: const Text('Ziyaretler'),
               onTap: () {
@@ -292,6 +304,13 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 _hizliErisimKarti(
                   context,
+                  Icons.badge,
+                  'Personel',
+                  'OSGB personel yonetimi',
+                  Colors.teal,
+                ),
+                _hizliErisimKarti(
+                  context,
                   Icons.calendar_today,
                   'Ziyaretler',
                   'Ziyaret planlama',
@@ -344,6 +363,11 @@ class DashboardScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const CalisanListScreen()),
+              );
+            } else if (baslik == 'Personel') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PersonelListScreen()),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(

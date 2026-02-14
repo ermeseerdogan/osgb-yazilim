@@ -12,6 +12,7 @@
 // - Mali musavir bilgileri
 // - Konum bilgileri
 
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 // ignore: avoid_web_libraries_in_flutter
@@ -35,6 +36,11 @@ class _IsyeriFormScreenState extends State<IsyeriFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _apiService = ApiService();
   bool _kaydediliyor = false;
+
+  // Logo state
+  bool _logoVar = false;
+  bool _logoYukleniyor = false;
+  String? _logoUrl;
 
   // Firma listesi (dropdown icin)
   List<Map<String, dynamic>> _firmalar = [];
@@ -114,6 +120,16 @@ class _IsyeriFormScreenState extends State<IsyeriFormScreen> {
       try {
         _hizmetBaslama = DateTime.parse(iy!['hizmet_baslama']);
       } catch (_) {}
+    }
+
+    // Logo durumunu kontrol et
+    if (iy != null) {
+      final logoUrl = iy['logo_url']?.toString() ?? '';
+      _logoVar = logoUrl.isNotEmpty;
+      if (_logoVar) {
+        final token = ApiService.tokenGetir();
+        _logoUrl = '${_apiService.isyeriLogoUrl(iy['id'])}?t=$token&_=${DateTime.now().millisecondsSinceEpoch}';
+      }
     }
 
     // Firma listesini yukle
@@ -509,10 +525,132 @@ class _IsyeriFormScreenState extends State<IsyeriFormScreen> {
     html.window.open(url, '_blank');
   }
 
-  // 📚 DERS: Form icerigini ayri metod olarak cikariyoruz
-  // Boylece hem tab'li hem tab'siz kullanimi destekleriz.
+  // ---- LOGO ISLEMLERI ----
+  Future<void> _logoYukle() async {
+    final uploadInput = html.FileUploadInputElement()..accept = 'image/*';
+    uploadInput.click();
+
+    uploadInput.onChange.listen((event) async {
+      final files = uploadInput.files;
+      if (files == null || files.isEmpty) return;
+
+      final file = files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Dosya boyutu 5 MB\'i gecemez'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+
+      setState(() => _logoYukleniyor = true);
+
+      try {
+        final reader = html.FileReader();
+        reader.readAsArrayBuffer(file);
+        await reader.onLoad.first;
+
+        final bytes = (reader.result as Uint8List).toList();
+        await _apiService.isyeriLogoYukle(widget.isyeri!['id'], bytes, file.name);
+
+        if (mounted) {
+          final token = ApiService.tokenGetir();
+          setState(() {
+            _logoVar = true;
+            _logoUrl = '${_apiService.isyeriLogoUrl(widget.isyeri!['id'])}?t=$token&_=${DateTime.now().millisecondsSinceEpoch}';
+            _logoYukleniyor = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Logo yuklendi'), backgroundColor: Colors.green),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _logoYukleniyor = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Logo yuklenemedi: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    });
+  }
+
+  Future<void> _logoSil() async {
+    setState(() => _logoYukleniyor = true);
+    try {
+      await _apiService.isyeriLogoSil(widget.isyeri!['id']);
+      if (mounted) {
+        setState(() {
+          _logoVar = false;
+          _logoUrl = null;
+          _logoYukleniyor = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Logo kaldirildi'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _logoYukleniyor = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Logo silinemedi: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Widget _logoWidget() {
+    final ad = _adController.text.isNotEmpty ? _adController.text : 'I';
+    final basHarfler = ad.substring(0, ad.length >= 2 ? 2 : 1).toUpperCase();
+
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        _logoYukleniyor
+            ? const CircleAvatar(radius: 45, child: CircularProgressIndicator())
+            : _logoVar && _logoUrl != null
+                ? CircleAvatar(
+                    radius: 45,
+                    backgroundImage: NetworkImage(_logoUrl!),
+                    backgroundColor: Colors.grey[200],
+                  )
+                : CircleAvatar(
+                    radius: 45,
+                    backgroundColor: Colors.orange[100],
+                    child: Text(basHarfler, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.orange[800])),
+                  ),
+        const SizedBox(height: 8),
+        if (widget.duzenleModu) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                onPressed: _logoYukleniyor ? null : _logoYukle,
+                icon: Icon(_logoVar ? Icons.edit : Icons.add_a_photo, size: 16),
+                label: Text(_logoVar ? 'Degistir' : 'Logo Yukle', style: const TextStyle(fontSize: 12)),
+              ),
+              if (_logoVar) ...[
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: _logoYukleniyor ? null : _logoSil,
+                  icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                  label: const Text('Kaldir', style: TextStyle(fontSize: 12, color: Colors.red)),
+                ),
+              ],
+            ],
+          ),
+        ],
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
   List<Widget> _formIcerigi() {
     return [
+        // ---- LOGO ----
+        _logoWidget(),
+
         // ---- FIRMA SECIMI ----
         const FormBolumBaslik(baslik: 'Firma Secimi', ikon: Icons.business),
         const SizedBox(height: 8),

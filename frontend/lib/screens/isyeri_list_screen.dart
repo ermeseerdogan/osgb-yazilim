@@ -518,10 +518,7 @@ class _IsyeriListScreenState extends State<IsyeriListScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(
             children: [
-              const SizedBox(
-                width: 32,
-                child: Text('#', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-              ),
+              const SizedBox(width: 40),
               ...aktifKolonlar.map((k) => Expanded(
                     child: _filtreliKolonBaslik(k),
                   )),
@@ -637,6 +634,24 @@ class _IsyeriListScreenState extends State<IsyeriListScreen> {
     );
   }
 
+  // Isyeri logo avatar
+  Widget _isyeriAvatar(dynamic isyeri) {
+    final ad = isyeri['ad']?.toString() ?? '';
+    final basHarfler = ad.isNotEmpty ? ad.substring(0, ad.length >= 2 ? 2 : 1).toUpperCase() : 'I';
+    final logoUrl = isyeri['logo_url']?.toString() ?? '';
+
+    if (logoUrl.isNotEmpty) {
+      final token = ApiService.tokenGetir();
+      final url = '${_apiService.isyeriLogoUrl(isyeri['id'])}?t=$token';
+      return CircleAvatar(radius: 16, backgroundImage: NetworkImage(url), backgroundColor: Colors.grey[200]);
+    }
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: Colors.orange[100],
+      child: Text(basHarfler, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orange[800])),
+    );
+  }
+
   // Tek isyeri satiri
   Widget _isyeriSatiri(List<KolonTanimi> aktifKolonlar, dynamic isyeri, int siraNo) {
     return InkWell(
@@ -650,8 +665,8 @@ class _IsyeriListScreenState extends State<IsyeriListScreen> {
         child: Row(
           children: [
             SizedBox(
-              width: 32,
-              child: Text('$siraNo', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+              width: 40,
+              child: _isyeriAvatar(isyeri),
             ),
             ...aktifKolonlar.map((k) {
               final deger = isyeri[k.anahtar]?.toString() ?? '';

@@ -126,6 +126,8 @@ class IsyeriResponse(BaseModel):
     koordinat_lat: Optional[float] = None
     koordinat_lng: Optional[float] = None
 
+    logo_url: Optional[str] = None
+
     aktif: bool
     olusturma_tarihi: Optional[datetime] = None
     guncelleme_tarihi: Optional[datetime] = None

@@ -11,7 +11,9 @@
 // - TC No kontrolu
 // - Dokumanlar tab'i (saglik raporu, egitim sertifikasi vb.)
 
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'dart:html' as html;
 import '../services/api_service.dart';
 import '../widgets/ortak_form.dart';
 import '../widgets/dokuman_tab.dart';
@@ -31,6 +33,11 @@ class _CalisanFormScreenState extends State<CalisanFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _apiService = ApiService();
   bool _kaydediliyor = false;
+
+  // Profil foto state
+  bool _profilFotoVar = false;
+  bool _fotoYukleniyor = false;
+  String? _fotoUrl;
 
   // Isyeri listesi (dropdown icin)
   List<Map<String, dynamic>> _isyerleri = [];
@@ -78,6 +85,16 @@ class _CalisanFormScreenState extends State<CalisanFormScreen> {
       try {
         _iseGirisTarihi = DateTime.parse(c!['ise_giris_tarihi']);
       } catch (_) {}
+    }
+
+    // Profil foto durumunu kontrol et
+    if (c != null) {
+      final fotoUrl = c['profil_foto_url']?.toString() ?? '';
+      _profilFotoVar = fotoUrl.isNotEmpty;
+      if (_profilFotoVar) {
+        final token = ApiService.tokenGetir();
+        _fotoUrl = '${_apiService.calisanProfilFotoUrl(c['id'])}?t=$token&_=${DateTime.now().millisecondsSinceEpoch}';
+      }
     }
 
     // Isyeri listesini yukle
@@ -258,8 +275,133 @@ class _CalisanFormScreenState extends State<CalisanFormScreen> {
   // 3. Is Bilgileri (gorev, bolum, ise giris)
   // 4. Saglik Bilgileri (dogum tarihi, kan grubu)
   // =============================================
+  // ---- PROFIL FOTO ISLEMLERI ----
+  Future<void> _fotoYukle() async {
+    final uploadInput = html.FileUploadInputElement()..accept = 'image/*';
+    uploadInput.click();
+
+    uploadInput.onChange.listen((event) async {
+      final files = uploadInput.files;
+      if (files == null || files.isEmpty) return;
+
+      final file = files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Dosya boyutu 5 MB\'i gecemez'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+
+      setState(() => _fotoYukleniyor = true);
+
+      try {
+        final reader = html.FileReader();
+        reader.readAsArrayBuffer(file);
+        await reader.onLoad.first;
+
+        final bytes = (reader.result as Uint8List).toList();
+        await _apiService.calisanProfilFotoYukle(widget.calisan!['id'], bytes, file.name);
+
+        if (mounted) {
+          final token = ApiService.tokenGetir();
+          setState(() {
+            _profilFotoVar = true;
+            _fotoUrl = '${_apiService.calisanProfilFotoUrl(widget.calisan!['id'])}?t=$token&_=${DateTime.now().millisecondsSinceEpoch}';
+            _fotoYukleniyor = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Fotograf yuklendi'), backgroundColor: Colors.green),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _fotoYukleniyor = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Fotograf yuklenemedi: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    });
+  }
+
+  Future<void> _fotoSil() async {
+    setState(() => _fotoYukleniyor = true);
+    try {
+      await _apiService.calisanProfilFotoSil(widget.calisan!['id']);
+      if (mounted) {
+        setState(() {
+          _profilFotoVar = false;
+          _fotoUrl = null;
+          _fotoYukleniyor = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Fotograf kaldirildi'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _fotoYukleniyor = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fotograf silinemedi: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Widget _profilFotoWidget() {
+    final ad = _adController.text.isNotEmpty ? _adController.text : '';
+    final soyad = _soyadController.text.isNotEmpty ? _soyadController.text : '';
+    final basHarfler = '${ad.isNotEmpty ? ad[0] : ''}${soyad.isNotEmpty ? soyad[0] : ''}'.toUpperCase();
+
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        _fotoYukleniyor
+            ? const CircleAvatar(radius: 50, child: CircularProgressIndicator())
+            : _profilFotoVar && _fotoUrl != null
+                ? CircleAvatar(
+                    radius: 50,
+                    backgroundImage: NetworkImage(_fotoUrl!),
+                    backgroundColor: Colors.grey[200],
+                  )
+                : CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.green[100],
+                    child: Text(basHarfler, style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.green[800])),
+                  ),
+        const SizedBox(height: 8),
+        if (widget.duzenleModu) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                onPressed: _fotoYukleniyor ? null : _fotoYukle,
+                icon: Icon(_profilFotoVar ? Icons.edit : Icons.add_a_photo, size: 16),
+                label: Text(_profilFotoVar ? 'Degistir' : 'Fotograf Yukle', style: const TextStyle(fontSize: 12)),
+              ),
+              if (_profilFotoVar) ...[
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: _fotoYukleniyor ? null : _fotoSil,
+                  icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                  label: const Text('Kaldir', style: TextStyle(fontSize: 12, color: Colors.red)),
+                ),
+              ],
+            ],
+          ),
+        ],
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
   List<Widget> _formIcerigi() {
     return [
+      // ---- PROFIL FOTO ----
+      _profilFotoWidget(),
+
       // ---- ISYERI SECIMI ----
       const FormBolumBaslik(baslik: 'Isyeri Secimi', ikon: Icons.factory),
       const SizedBox(height: 8),

@@ -24,6 +24,7 @@ from app.api.v1.log import router as log_router
 from app.api.v1.isyeri import router as isyeri_router
 from app.api.v1.dokuman import router as dokuman_router
 from app.api.v1.calisan import router as calisan_router
+from app.api.v1.personel import router as personel_router
 
 
 # ---- UYGULAMAYI OLUŞTUR ----
@@ -59,6 +60,7 @@ app.include_router(log_router, prefix="/api/v1")
 app.include_router(isyeri_router, prefix="/api/v1")
 app.include_router(dokuman_router, prefix="/api/v1")
 app.include_router(calisan_router, prefix="/api/v1")
+app.include_router(personel_router, prefix="/api/v1")
 
 
 # ---- ANA SAYFA ----

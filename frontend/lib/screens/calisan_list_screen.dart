@@ -598,10 +598,7 @@ class _CalisanListScreenState extends State<CalisanListScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(
             children: [
-              const SizedBox(
-                width: 32,
-                child: Text('#', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-              ),
+              const SizedBox(width: 40),
               ...aktifKolonlar.map((k) => Expanded(
                     child: _filtreliKolonBaslik(k),
                   )),
@@ -718,6 +715,25 @@ class _CalisanListScreenState extends State<CalisanListScreen> {
   }
 
   // Tek calisan satiri
+  // Calisan profil foto avatar
+  Widget _calisanAvatar(dynamic calisan) {
+    final ad = calisan['ad']?.toString() ?? '';
+    final soyad = calisan['soyad']?.toString() ?? '';
+    final basHarfler = '${ad.isNotEmpty ? ad[0] : ''}${soyad.isNotEmpty ? soyad[0] : ''}'.toUpperCase();
+    final fotoUrl = calisan['profil_foto_url']?.toString() ?? '';
+
+    if (fotoUrl.isNotEmpty) {
+      final token = ApiService.tokenGetir();
+      final url = '${_apiService.calisanProfilFotoUrl(calisan['id'])}?t=$token';
+      return CircleAvatar(radius: 16, backgroundImage: NetworkImage(url), backgroundColor: Colors.grey[200]);
+    }
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: Colors.green[100],
+      child: Text(basHarfler, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green[800])),
+    );
+  }
+
   Widget _calisanSatiri(List<KolonTanimi> aktifKolonlar, dynamic calisan, int siraNo) {
     return InkWell(
       onTap: () => _calisanDuzenle(calisan),
@@ -730,8 +746,8 @@ class _CalisanListScreenState extends State<CalisanListScreen> {
         child: Row(
           children: [
             SizedBox(
-              width: 32,
-              child: Text('$siraNo', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+              width: 40,
+              child: _calisanAvatar(calisan),
             ),
             ...aktifKolonlar.map((k) {
               final deger = calisan[k.anahtar]?.toString() ?? '';

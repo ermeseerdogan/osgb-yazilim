@@ -69,6 +69,20 @@ CALISAN_ALANLARI = [
     {"alan": "isyeri_adi",       "baslik": "Isyeri",          "zorunlu": False, "genislik": 25},
 ]
 
+PERSONEL_ALANLARI = [
+    {"alan": "ad",                    "baslik": "Ad",                  "zorunlu": True,  "genislik": 18},
+    {"alan": "soyad",                 "baslik": "Soyad",               "zorunlu": True,  "genislik": 18},
+    {"alan": "unvan",                 "baslik": "Unvan",               "zorunlu": True,  "genislik": 20},
+    {"alan": "tc_no",                 "baslik": "TC No",               "zorunlu": False, "genislik": 15},
+    {"alan": "telefon",               "baslik": "Telefon",             "zorunlu": False, "genislik": 18},
+    {"alan": "email",                 "baslik": "Email",               "zorunlu": False, "genislik": 25},
+    {"alan": "uzmanlik_belgesi_no",   "baslik": "Belge No",            "zorunlu": False, "genislik": 18},
+    {"alan": "diploma_no",            "baslik": "Diploma No",          "zorunlu": False, "genislik": 18},
+    {"alan": "uzmanlik_sinifi",       "baslik": "Uzmanlik Sinifi",     "zorunlu": False, "genislik": 18},
+    {"alan": "brans",                 "baslik": "Brans",               "zorunlu": False, "genislik": 25},
+    {"alan": "ise_baslama_tarihi",    "baslik": "Ise Baslama",         "zorunlu": False, "genislik": 15},
+]
+
 # Ileride eklenecek moduller icin hazir:
 # ZIYARET_ALANLARI = [...]
 

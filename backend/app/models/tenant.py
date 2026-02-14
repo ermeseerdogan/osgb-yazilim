@@ -43,6 +43,20 @@ class ZiyaretDurumu(str, enum.Enum):
     ERTELENDI = "ertelendi"
 
 
+class PersonelUnvan(str, enum.Enum):
+    """OSGB personel unvanlari"""
+    ISG_UZMANI = "isg_uzmani"
+    ISYERI_HEKIMI = "isyeri_hekimi"
+    DSP = "dsp"
+
+
+class UzmanlikSinifi(str, enum.Enum):
+    """ISG Uzmani uzmanlik sinifi"""
+    A_SINIFI = "a_sinifi"
+    B_SINIFI = "b_sinifi"
+    C_SINIFI = "c_sinifi"
+
+
 # =============================================
 # FIRMA TABLOSU
 # Excel'deki "FIRMA KAYDETME" bolumu
@@ -135,6 +149,9 @@ class Isyeri(Base):
     koordinat_lng = Column(Float)          # Boylam
     lokasyon = Column(String(500))
 
+    # Logo
+    logo_url = Column(String(500))
+
     # Durum
     aktif = Column(Boolean, default=True)
     olusturma_tarihi = Column(DateTime, default=datetime.utcnow)
@@ -199,6 +216,9 @@ class Calisan(Base):
     bolum = Column(String(255))             # Calistigi bolum
     kan_grubu = Column(String(10))
 
+    # Profil fotografi
+    profil_foto_url = Column(String(500))
+
     # Durum
     aktif = Column(Boolean, default=True)
     olusturma_tarihi = Column(DateTime, default=datetime.utcnow)
@@ -210,6 +230,52 @@ class Calisan(Base):
 
     def __repr__(self):
         return f"<Calisan(id={self.id}, ad='{self.ad} {self.soyad}')>"
+
+
+# =============================================
+# PERSONEL TABLOSU
+# OSGB'nin kendi calisanlari (ISG Uzmani, Isyeri Hekimi, DSP)
+# Calisan'dan farki: Belirli bir isyerine degil, OSGB'ye baglilar.
+# Sozlesme/Atama moduluyle birden fazla isyerine atanabilirler.
+# =============================================
+class Personel(Base):
+    """OSGB personeli: ISG Uzmani, Isyeri Hekimi, DSP"""
+    __tablename__ = "personeller"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Kisisel bilgiler
+    ad = Column(String(100), nullable=False)
+    soyad = Column(String(100), nullable=False)
+    tc_no = Column(String(11), unique=True, index=True)
+    telefon = Column(String(20))
+    email = Column(String(255))
+
+    # Unvan (zorunlu)
+    unvan = Column(Enum(PersonelUnvan), nullable=False, index=True)
+
+    # Mesleki bilgiler
+    uzmanlik_belgesi_no = Column(String(100))
+    diploma_no = Column(String(100))
+    uzmanlik_sinifi = Column(Enum(UzmanlikSinifi))  # Sadece ISG Uzmani icin
+    brans = Column(String(255))                      # Sadece Isyeri Hekimi icin
+
+    # Calisma bilgileri
+    ise_baslama_tarihi = Column(Date)
+
+    # Kullanici baglantisi (opsiyonel - sisteme giris yapabilir)
+    kullanici_id = Column(Integer, index=True)
+
+    # Profil fotografi
+    profil_foto_url = Column(String(500))
+
+    # Durum
+    aktif = Column(Boolean, default=True)
+    olusturma_tarihi = Column(DateTime, default=datetime.utcnow)
+    guncelleme_tarihi = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Personel(id={self.id}, ad='{self.ad} {self.soyad}', unvan='{self.unvan}')>"
 
 
 # =============================================
