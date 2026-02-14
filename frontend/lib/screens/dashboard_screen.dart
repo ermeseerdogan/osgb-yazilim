@@ -13,6 +13,7 @@ import '../services/api_service.dart';
 import 'login_screen.dart';
 import 'firma_list_screen.dart';
 import 'isyeri_list_screen.dart';
+import 'calisan_list_screen.dart';
 import 'log_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -156,7 +157,10 @@ class DashboardScreen extends StatelessWidget {
               title: const Text('Calisanlar'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Calisan listesi sayfasina git
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CalisanListScreen()),
+                );
               },
             ),
             ListTile(
@@ -335,6 +339,11 @@ class DashboardScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const IsyeriListScreen()),
+              );
+            } else if (baslik == 'Calisanlar') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CalisanListScreen()),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(

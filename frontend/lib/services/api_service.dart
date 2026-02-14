@@ -514,6 +514,145 @@ class ApiService {
   }
 
   // =============================================
+  // CALISAN ISLEMLERI
+  // 📚 DERS: Isyeri islemleriyle ayni mantik.
+  // Ek olarak isyeri_id filtresi var.
+  // Bir isyerindeki calisanlari listelerken isyeriId gonderilir.
+  // =============================================
+
+  // Calisan listesi getir
+  // 📚 DERS: isyeriId parametresi ile belirli isyerinin
+  // calisanlarini filtreleyebiliriz.
+  Future<Map<String, dynamic>> calisanListele({
+    int sayfa = 1,
+    int adet = 20,
+    String? arama,
+    int? isyeriId,
+  }) async {
+    try {
+      final params = <String, dynamic>{
+        'sayfa': sayfa,
+        'adet': adet,
+      };
+      if (arama != null && arama.isNotEmpty) {
+        params['arama'] = arama;
+      }
+      if (isyeriId != null) {
+        params['isyeri_id'] = isyeriId;
+      }
+
+      final response = await _dio.get('/calisan', queryParameters: params);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Yeni calisan ekle
+  Future<Map<String, dynamic>> calisanEkle(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.post('/calisan', data: data);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Calisan guncelle
+  Future<Map<String, dynamic>> calisanGuncelle(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await _dio.put('/calisan/$id', data: data);
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Calisan sil (pasife cek)
+  // 📚 DERS: Gercek silme yapmiyoruz, aktif=False yapiyoruz
+  Future<void> calisanSil(int id) async {
+    try {
+      await _dio.delete('/calisan/$id');
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Calisan Excel export
+  Future<List<int>> calisanExcelExport({String? arama, int? isyeriId}) async {
+    try {
+      final params = <String, dynamic>{};
+      if (arama != null && arama.isNotEmpty) {
+        params['arama'] = arama;
+      }
+      if (isyeriId != null) {
+        params['isyeri_id'] = isyeriId;
+      }
+      final response = await _dio.get(
+        '/calisan/excel/export',
+        queryParameters: params,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return List<int>.from(response.data);
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Calisan Excel sablon indir
+  Future<List<int>> calisanExcelSablon() async {
+    try {
+      final response = await _dio.get(
+        '/calisan/excel/sablon',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return List<int>.from(response.data);
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Calisan Excel import
+  // 📚 DERS: isyeriId zorunlu! Excel'den yuklenen calisanlar
+  // hangi isyerine ait oldugunu bilmeli.
+  Future<Map<String, dynamic>> calisanExcelImport(
+    List<int> dosyaBytes,
+    String dosyaAdi,
+    int isyeriId,
+  ) async {
+    try {
+      final formData = FormData.fromMap({
+        'dosya': MultipartFile.fromBytes(dosyaBytes, filename: dosyaAdi),
+      });
+      final response = await _dio.post(
+        '/calisan/excel/import?isyeri_id=$isyeriId',
+        data: formData,
+      );
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // Isyeri listesi getir (dropdown icin - sadece id ve ad)
+  // 📚 DERS: Calisan formunda isyeri secimi icin kullanilir
+  Future<List<Map<String, dynamic>>> isyeriListesiGetir() async {
+    try {
+      final response = await _dio.get('/isyeri', queryParameters: {'adet': 200});
+      final data = response.data as Map<String, dynamic>;
+      final isyerleri = (data['isyerleri'] as List)
+          .map((i) => {'id': i['id'], 'ad': i['ad']})
+          .toList();
+      return isyerleri;
+    } on DioException catch (e) {
+      throw Exception(_kullaniciDostuHata(e));
+    }
+  }
+
+  // =============================================
   // DOKUMAN ISLEMLERI
   // 📚 DERS: Polimorfik dokuman sistemi.
   // Tum moduller (firma, isyeri, calisan vs.) ayni metodlari kullanir.
